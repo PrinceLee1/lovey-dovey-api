@@ -17,4 +17,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai/truth-dare', [GameAiController::class, 'truthDare']);
     Route::get('/history',  [GameHistoryController::class, 'index']);
     Route::post('/history', [GameHistoryController::class, 'store']);
+    Route::post('/ai/trivia', [GameAiController::class, 'trivia']);
+    Route::post('/ai/charades', [GameAiController::class, 'charades']);
+
 });
