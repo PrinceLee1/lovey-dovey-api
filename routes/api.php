@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\GameAiController;
 use App\Http\Controllers\GameHistoryController;
+use App\Http\Controllers\LobbyController;
+use App\Http\Controllers\LobbyRealTimeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -19,5 +21,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/history', [GameHistoryController::class, 'store']);
     Route::post('/ai/trivia', [GameAiController::class, 'trivia']);
     Route::post('/ai/charades', [GameAiController::class, 'charades']);
+    Route::put('/user', [AuthController::class, 'updateUser']);
+    Route::post('/user/avatar', [AuthController::class, 'uploadAvatar']);
+    Route::post('/user/password', [AuthController::class, 'changePassword']);
 
+    Route::get('/lobbies/public', [LobbyController::class, 'indexPublic']);
+    Route::get('/lobbies/mine',   [LobbyController::class, 'my']);
+    Route::post('/lobbies',       [LobbyController::class, 'store']);
+
+    Route::get('/lobbies/{code}',         [LobbyController::class, 'showByCode']);
+    Route::post('/lobbies/{code}/join',   [LobbyController::class, 'join']);
+    Route::post('/lobbies/{code}/leave',  [LobbyController::class, 'leave']);
+    Route::post('/lobbies/{code}/close',  [LobbyController::class, 'close']);
+
+    Route::get( '/lobbies/{code}/messages',            [LobbyRealTimeController::class,'messages']);
+    Route::post('/lobbies/{code}/messages',            [LobbyRealtimeController::class,'postMessage']);
+
+    Route::get( '/lobbies/{code}/sessions',            [LobbyRealtimeController::class,'sessions']);
+    Route::post('/lobbies/{code}/games/start',         [LobbyRealtimeController::class,'startGame']);
+    Route::post('/lobbies/{code}/games/{id}/update',   [LobbyRealtimeController::class,'pushUpdate']);
+    Route::post('/lobbies/{code}/games/{id}/end',      [LobbyRealtimeController::class,'endGame']);
 });
