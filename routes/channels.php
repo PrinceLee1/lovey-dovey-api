@@ -21,3 +21,6 @@ Broadcast::channel('presence-lobby.{code}', function ($user, string $code) {
 Broadcast::channel('lobby-game.{sessionId}', function ($user, int $sessionId) {
     return ['id' => $user->id, 'name' => $user->name];
 });
+Broadcast::channel('private-user.{id}', function ($user, int $id) {
+    return (int) $user->id === (int) $id;
+});

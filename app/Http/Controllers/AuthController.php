@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -40,7 +41,11 @@ class AuthController extends Controller
         return response()->json(['user'=>$user,'token'=>$token]);
     }
 
-    public function me(Request $r) { return response()->json($r->user()); }
+    public function me(Request $r) {
+        $user = Auth::user();
+        $user->load('partner');
+        return response()->json($user);
+    }
     public function updateUser(Request $r) {
         $v = $r->validate([
             'name' => 'sometimes|required|string|max:255',

@@ -1,9 +1,14 @@
 <?php
 
+use App\Http\Controllers\DailyChallengeController;
 use App\Http\Controllers\GameAiController;
 use App\Http\Controllers\GameHistoryController;
+use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LobbyController;
 use App\Http\Controllers\LobbyRealTimeController;
+use App\Http\Controllers\PartnerController;
+use App\Http\Controllers\ProgressController;
+use App\Http\Controllers\StreakController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -41,4 +46,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/lobbies/{code}/games/start',         [LobbyRealtimeController::class,'startGame']);
     Route::post('/lobbies/{code}/games/{id}/update',   [LobbyRealtimeController::class,'pushUpdate']);
     Route::post('/lobbies/{code}/games/{id}/end',      [LobbyRealtimeController::class,'endGame']);
+  
+    Route::post('/partner/invite',        [PartnerController::class,'createInvite']);
+    Route::get( '/partner/invites',       [PartnerController::class,'invites']);
+    Route::get( '/partner/lookup/{code}', [PartnerController::class,'lookup']);   // 🔎
+    Route::post('/partner/accept/{code}', [PartnerController::class,'accept']);   // ✅
+    Route::post('/partner/reject/{code}', [PartnerController::class,'reject']);   // ❌
+    Route::post('/partner/unpair/request',[PartnerController::class,'unpairRequest']);
+    Route::post('/partner/unpair/confirm',[PartnerController::class,'unpairConfirm']);
+    Route::get('/partner/status',         [PartnerController::class,'status']);
+    Route::post('/partner/unpair/cancel', [PartnerController::class,'unpairCancel']);
+
+    Route::get('/daily-challenge', [DailyChallengeController::class, 'show']);
+    Route::post('/daily-challenge/complete', [DailyChallengeController::class, 'complete']);
+    Route::get('/leaderboard', [LeaderboardController::class, 'index']);
+
+    Route::get('/streaks', [StreakController::class, 'show']);
+
+    Route::get('/me/progress', [ProgressController::class, 'show']);
 });

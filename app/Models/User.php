@@ -57,4 +57,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Lobby::class, 'host_id');
     }
+    public function partner(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'partners', 'user_a_id', 'user_b_id')
+            ->withPivot('status', 'started_at', 'ended_at')
+            ->wherePivot('status', 'active')
+            ->withTimestamps();
+    }
 }
