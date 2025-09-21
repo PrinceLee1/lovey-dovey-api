@@ -10,7 +10,7 @@ use App\Models\User;
 use Storage;
 class AuthController extends Controller
 {
-        public function register(Request $r) {
+    public function register(Request $r) {
         $v = $r->validate([
             'name' => 'required|string|max:255',
             'email'=> 'required|email|unique:users,email',

@@ -43,6 +43,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'xp' => 'integer',
+            'streak_updated_for_date' => 'date',      // or 'immutable_date'
+
         ];
     }
     public function lobbies(): BelongsToMany
