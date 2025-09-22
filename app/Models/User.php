@@ -19,7 +19,7 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $fillable = ['name','email','password','phone','gender','dob', 'xp'];
+    protected $fillable = ['name','email','password','phone','gender','dob', 'xp', 'streak','streak_updated_for_date','is_admin','status','deactivated_at'];
 
 
     /**
@@ -44,7 +44,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'xp' => 'integer',
             'streak_updated_for_date' => 'date',      // or 'immutable_date'
-
+            'deactivated_at' => 'datetime',
         ];
     }
     public function lobbies(): BelongsToMany
@@ -66,4 +66,6 @@ class User extends Authenticatable
             ->wherePivot('status', 'active')
             ->withTimestamps();
     }
+    public function scopeActive($q){ return $q->where('status','active'); }
+
 }

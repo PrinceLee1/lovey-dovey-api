@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminMetricsController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\DailyChallengeController;
 use App\Http\Controllers\GameAiController;
 use App\Http\Controllers\GameHistoryController;
@@ -64,4 +66,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/streaks', [StreakController::class, 'show']);
 
     Route::get('/me/progress', [ProgressController::class, 'show']);
+});
+Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
+    Route::get('/metrics', [AdminMetricsController::class, 'show']);
+    Route::get('/users',   [AdminUserController::class, 'index']);
+    Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus']);
+    Route::delete('/users/{user}',       [AdminUserController::class, 'destroy']);
 });
