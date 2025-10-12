@@ -89,7 +89,7 @@ class GameAiController extends Controller
         ];
 
         $system = "You generate short, engaging Truth-or-Dare prompts for adult couples.
-Keep everything {$tone}; do not include explicit sexual content or illegal/unsafe acts.
+Keep everything {$tone};.
 Prompts must be concise, warm, playful, and immediately doable. Avoid personal data collection.";
 
         $who = $names ? implode(' & ', $names) : 'two partners';
@@ -268,16 +268,17 @@ Return only JSON that satisfies the schema.
 
         return response()->json($out);
     }
- public function charades(Request $request)
-{
-    $v = $request->validate([
-        'category'    => 'nullable|string',
-        'difficulty'  => 'nullable|in:Easy,Medium,Hard',
-        'count'       => 'nullable|integer|min:12|max:80',
-        'taboo_words' => 'nullable|integer|min:0|max:5',
-        'names'       => 'nullable|array',
-        'personalize' => 'nullable|boolean',
-    ]);
+
+    public function charades(Request $request)
+    {
+        $v = $request->validate([
+            'category'    => 'nullable|string',
+            'difficulty'  => 'nullable|in:Easy,Medium,Hard',
+            'count'       => 'nullable|integer|min:12|max:80',
+            'taboo_words' => 'nullable|integer|min:0|max:5',
+            'names'       => 'nullable|array',
+            'personalize' => 'nullable|boolean',
+        ]);
 
     $category   = $v['category']   ?? 'General';
     $difficulty = $v['difficulty'] ?? 'Easy';
@@ -333,7 +334,7 @@ Return only JSON that satisfies the schema.
     $who = $names ? implode(' & ', $names) : 'two teams';
     $system = "You generate PG-13, globally recognizable CHARADES prompts for party play. ".
               "Avoid explicit/offensive content and niche references. ".
-              "The 'title' is exactly what the actor must mime. Include 0–5 short taboo words.";
+              "The 'title' is exactly what the actor must mime. Include 0–5 short taboo words.". "Do not repeat items.";
 
     $user = "Audience: {$who}\nCategory: {$category}\nDifficulty: {$difficulty}\n".
             "Need exactly {$count} cards. Keep titles short and widely known. Return ONLY JSON.";

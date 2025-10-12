@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminMetricsController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\CoupleSessionController;
 use App\Http\Controllers\DailyChallengeController;
 use App\Http\Controllers\GameAiController;
 use App\Http\Controllers\GameHistoryController;
@@ -64,8 +65,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/leaderboard', [LeaderboardController::class, 'index']);
 
     Route::get('/streaks', [StreakController::class, 'show']);
-
     Route::get('/me/progress', [ProgressController::class, 'show']);
+
+    Route::post('/sessions', [CoupleSessionController::class,'create']);
+    Route::post('/couple-sessions/start', [CoupleSessionController::class,'start']);
+
+    Route::get('/sessions/{code}', [CoupleSessionController::class,'show']);
+    Route::post('/sessions/{code}/action', [CoupleSessionController::class,'action']);
 });
 Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
     Route::get('/metrics', [AdminMetricsController::class, 'show']);
