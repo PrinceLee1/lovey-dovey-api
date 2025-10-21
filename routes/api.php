@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/lobbies/{code}/join',   [LobbyController::class, 'join']);
     Route::post('/lobbies/{code}/leave',  [LobbyController::class, 'leave']);
     Route::post('/lobbies/{code}/close',  [LobbyController::class, 'close']);
+    Route::delete('/lobbies/{id}',     [LobbyController::class, 'destroy']);
 
     Route::get( '/lobbies/{code}/messages',            [LobbyRealTimeController::class,'messages']);
     Route::post('/lobbies/{code}/messages',            [LobbyRealtimeController::class,'postMessage']);

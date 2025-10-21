@@ -86,4 +86,10 @@ class LobbyController extends Controller
         $lobby->update(['status'=>'ended']);
         return response()->json(['ok'=>true]);
     }
+    public function destroy(Request $r, string $id) {
+        $lobby = Lobby::where('id',$id)->firstOrFail();
+        abort_unless($lobby->host_id === $r->user()->id, 403);
+        $lobby->delete();
+        return response()->json(['ok'=>true]);
+    }
 }
