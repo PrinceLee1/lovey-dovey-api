@@ -119,7 +119,7 @@ Return only JSON that satisfies the schema.
             ],
         ];
 
-        $resp = Http::withToken(env('OPENAI_API_KEY'))
+        $resp = Http::withToken(config('services.openai.key'))
             ->timeout(40)
             ->post('https://api.openai.com/v1/chat/completions', $payload)
             ->throw()
@@ -243,7 +243,7 @@ Return only JSON that satisfies the schema.
             ],
         ];
 
-        $resp = Http::withToken(env('OPENAI_API_KEY'))
+        $resp = Http::withToken(config('services.openai.key'))
             ->timeout(45)->post('https://api.openai.com/v1/chat/completions', $payload)
             ->throw()->json();
 
@@ -350,7 +350,7 @@ Return only JSON that satisfies the schema.
     ];
 
     try {
-        $resp = Http::withToken(env('OPENAI_API_KEY'))
+        $resp = Http::withToken(config('services.openai.key'))
             ->timeout(45)->post('https://api.openai.com/v1/chat/completions', $payload)
             ->throw()->json();
 
@@ -359,7 +359,7 @@ Return only JSON that satisfies the schema.
     } catch (\Illuminate\Http\Client\RequestException $e) {
         // 🔁 Fallback: ask for plain JSON object and parse it ourselves
         $payload['response_format'] = ['type' => 'json_object'];
-        $resp2 = Http::withToken(env('OPENAI_API_KEY'))
+        $resp2 = Http::withToken(config('services.openai.key'))
             ->timeout(45)->post('https://api.openai.com/v1/chat/completions', $payload)
             ->throw()->json();
         $content = $resp2['choices'][0]['message']['content'] ?? '{}';

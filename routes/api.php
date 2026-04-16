@@ -73,6 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/sessions/{code}', [CoupleSessionController::class,'show']);
     Route::post('/sessions/{code}/action', [CoupleSessionController::class,'action']);
+    Route::post('/broadcasting/auth', function (Request $request) {
+    return Broadcast::auth($request); // Facade, not broadcast() helper
+    });
 });
 Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
     Route::get('/metrics', [AdminMetricsController::class, 'show']);
