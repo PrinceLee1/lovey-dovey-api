@@ -26,7 +26,7 @@ class GameHistoryController extends Controller
     public function store(Request $request)
     {
         $v = $request->validate([
-            'game_id'          => 'required|string|max:50',
+            'game_id'          => 'required|max:50',
             'game_title'       => 'required|string|max:200',
             'kind'             => 'required|string|max:50',
             'category'         => 'required|string|max:50',

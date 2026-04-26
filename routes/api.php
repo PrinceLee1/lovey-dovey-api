@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\CoupleSessionController;
 use App\Http\Controllers\DailyChallengeController;
 use App\Http\Controllers\GameAiController;
+use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameHistoryController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LobbyController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\LobbyRealTimeController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\StreakController;
+use App\Http\Controllers\SubscriptionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -76,6 +78,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/broadcasting/auth', function (Request $request) {
     return Broadcast::auth($request); // Facade, not broadcast() helper
     });
+    Route::get('/games', [GameController::class, 'index']);
+    Route::get('/games/{game}', [GameController::class, 'show']);
+    Route::post('/subscribe/checkout', [SubscriptionController::class, 'checkout']);
 });
 Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
     Route::get('/metrics', [AdminMetricsController::class, 'show']);
@@ -83,3 +88,5 @@ Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
     Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus']);
     Route::delete('/users/{user}',       [AdminUserController::class, 'destroy']);
 });
+Route::post('/webhooks/stripe', [SubscriptionController::class, 'webhook']);   
+

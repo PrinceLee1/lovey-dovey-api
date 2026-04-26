@@ -227,6 +227,7 @@ Return only JSON that satisfies the schema.
     Audience: {$who}
     Need exactly {$count} multiple-choice questions (4 options each, one correct).
     Write succinct, fair questions. Avoid region-specific knowledge unless globally popular. 
+    If Category is 'Erotic', ensure questions are very intimate yet tasteful. Do not repeat questions.
     Return only JSON per schema.
     ");
 

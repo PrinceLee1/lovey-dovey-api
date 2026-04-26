@@ -37,5 +37,10 @@ return [
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
     ],
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'plus_price_id' => env('STRIPE_PLUS_PRICE_ID'),
+    ],
 
 ];
