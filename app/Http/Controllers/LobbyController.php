@@ -92,4 +92,9 @@ class LobbyController extends Controller
         $lobby->delete();
         return response()->json(['ok'=>true]);
     }
+    public function members(Request $r, string $code) {
+        $lobby = Lobby::where('code',$code)->firstOrFail();
+        $members = $lobby->members()->select('users.id','users.name')->get();
+        return response()->json(['members'=>$members]);
+    }
 }

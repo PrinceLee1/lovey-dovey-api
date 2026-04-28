@@ -55,9 +55,9 @@ Route::middleware('auth:sanctum')->group(function () {
   
     Route::post('/partner/invite',        [PartnerController::class,'createInvite']);
     Route::get( '/partner/invites',       [PartnerController::class,'invites']);
-    Route::get( '/partner/lookup/{code}', [PartnerController::class,'lookup']);   // 🔎
-    Route::post('/partner/accept/{code}', [PartnerController::class,'accept']);   // ✅
-    Route::post('/partner/reject/{code}', [PartnerController::class,'reject']);   // ❌
+    Route::get( '/partner/lookup/{code}', [PartnerController::class,'lookup']);
+    Route::post('/partner/accept/{code}', [PartnerController::class,'accept']);
+    Route::post('/partner/reject/{code}', [PartnerController::class,'reject']);
     Route::post('/partner/unpair/request',[PartnerController::class,'unpairRequest']);
     Route::post('/partner/unpair/confirm',[PartnerController::class,'unpairConfirm']);
     Route::get('/partner/status',         [PartnerController::class,'status']);
@@ -76,11 +76,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/sessions/{code}', [CoupleSessionController::class,'show']);
     Route::post('/sessions/{code}/action', [CoupleSessionController::class,'action']);
     Route::post('/broadcasting/auth', function (Request $request) {
+        Log::info('Broadcast auth attempt', ['user_id' => $request->user()->id, 'channel_name' => $request->channel_name]);
     return Broadcast::auth($request); // Facade, not broadcast() helper
     });
     Route::get('/games', [GameController::class, 'index']);
     Route::get('/games/{game}', [GameController::class, 'show']);
     Route::post('/subscribe/checkout', [SubscriptionController::class, 'checkout']);
+    Route::get('lobbies/{code}/members', [LobbyController::class, 'members']);
 });
 Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
     Route::get('/metrics', [AdminMetricsController::class, 'show']);

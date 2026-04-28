@@ -18,7 +18,7 @@ class GameAiController extends Controller
             'category'      => 'nullable|string',      // Romantic | Playful | Spicy | Challenge
             'tone'          => 'nullable|string',      // PG-13 by default
             'count_truths'  => 'nullable|integer|min:0|max:40',
-            'count_dares'   => 'nullable|integer|min:4|max:40',
+            'count_dares'   => 'nullable|integer|min:0|max:40',
             'names'         => 'nullable|array',       // ["Alex","Maya"]
             'personalize'   => 'nullable|boolean',     // if false, cache is shared (ignores names)
         ]);

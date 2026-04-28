@@ -55,7 +55,7 @@ class LobbyRealTimeController extends Controller
   // Start/End game
   public function startGame(Request $r, string $code) {
     $data = $r->validate([
-      'kind'     => 'required|in:trivia,charades_ai',
+      'kind'     => 'required|in:trivia,charades_ai,hot_seat,would_you_rather,spice_dice',
       'settings' => 'nullable|array'
     ]);
     $lobby = Lobby::where('code',$code)->firstOrFail();
