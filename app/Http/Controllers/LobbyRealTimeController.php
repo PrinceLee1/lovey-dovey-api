@@ -16,7 +16,7 @@ class LobbyRealTimeController extends Controller
      // Chat
   public function messages(Request $r, string $code) {
     $lobby = Lobby::where('code',$code)->firstOrFail();
-    $msgs = LobbyMessage::with('user:id,name')
+    $msgs = LobbyMessage::with('user:id,name,avatar_url')
       ->where('lobby_id',$lobby->id)->latest()->limit(50)->get()->reverse()->values();
     return response()->json($msgs);
   }
@@ -38,10 +38,10 @@ class LobbyRealTimeController extends Controller
           'body'     => $data['body'],
       ])->load('user:id,name');
 
-      // ✅ Broadcast to others ONLY (the sender won’t receive this event)
+      // Broadcast to others ONLY (the sender won’t receive this event)
       broadcast(new LobbyMessageCreated($msg, $code))->toOthers();
 
-      // ✅ Return the real message so the sender can swap their optimistic one
+      // Return the real message so the sender can swap their optimistic one
       return response()->json([
           'message' => [
               'id'         => $msg->id,
@@ -85,7 +85,8 @@ class LobbyRealTimeController extends Controller
   public function endGame(Request $r, string $code, int $sessionId) {
     $data = $r->validate(['result'=>'required|array']);
     $lobby = Lobby::where('code',$code)->firstOrFail();
-    abort_unless($lobby->host_id === $r->user()->id, 403);
+    //only host (or server) can end game to prevent cheating, return 'You are not the host' instead of 'Session not found' to avoid confusion for cheaters
+    abort_unless($lobby->host_id == $r->user()->id, 403);
 
     $session = LobbyGameSession::where('id',$sessionId)->where('lobby_id',$lobby->id)->firstOrFail();
     $session->update(['status'=>'ended','result'=>$data['result'],'ended_at'=>now()]);
@@ -99,5 +100,32 @@ class LobbyRealTimeController extends Controller
     $lobby = Lobby::where('code',$code)->firstOrFail();
     $rows = LobbyGameSession::where('lobby_id',$lobby->id)->latest()->limit(20)->get();
     return response()->json($rows);
+  }
+  public function gameAction(Request $request, string $code, int $sessionId)
+  {
+      $request->validate([
+          'type' => 'required|string|in:state,vote,buzz,answer,tick',
+          'data' => 'nullable|array',
+      ]);
+  
+      // Verify lobby exists and user is a member
+      $lobby = Lobby::where('code', $code)->firstOrFail();
+  
+      // Optional: verify session belongs to this lobby
+      // $session = LobbyGameSession::where('id', $sessionId)
+      //     ->where('lobby_id', $lobby->id)
+      //     ->firstOrFail();
+  
+      $payload = [
+          'type' => $request->type,
+          'data' => $request->data ?? [],
+          'by'   => $request->user()->name,
+      ];
+  
+      // Broadcast to ALL players in the lobby game channel
+      // Frontend: echo.channel(`lobby-game.${sessionId}`).listen(".LobbyGameUpdate", ...)
+      broadcast(new LobbyGameUpdate($sessionId, $payload));
+  
+      return response()->json(['ok' => true]);
   }
 }

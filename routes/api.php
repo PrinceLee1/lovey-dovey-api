@@ -75,14 +75,28 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/sessions/{code}', [CoupleSessionController::class,'show']);
     Route::post('/sessions/{code}/action', [CoupleSessionController::class,'action']);
-    Route::post('/broadcasting/auth', function (Request $request) {
-        Log::info('Broadcast auth attempt', ['user_id' => $request->user()->id, 'channel_name' => $request->channel_name]);
-    return Broadcast::auth($request); // Facade, not broadcast() helper
-    });
+    Route::post('/broadcasting/auth', function (Illuminate\Http\Request $request) {
+        if (! $request->user()) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        $result = Broadcast::auth($request);
+        return response()->json($result);
+    })->middleware('auth:sanctum');
     Route::get('/games', [GameController::class, 'index']);
     Route::get('/games/{game}', [GameController::class, 'show']);
     Route::post('/subscribe/checkout', [SubscriptionController::class, 'checkout']);
     Route::get('lobbies/{code}/members', [LobbyController::class, 'members']);
+    Route::post('/lobbies/{code}/reactions', [LobbyController::class, 'sendReaction']);
+    Route::post('/lobbies/{code}/games/{sessionId}/action', [LobbyRealTimeController::class, 'gameAction']);
+
+
+});
+    Route::get('/test-broadcast/{sessionId}', function ($sessionId) {
+    broadcast(new \App\Events\LobbyGameUpdate((int)$sessionId, [
+        'type' => 'state',
+        'data' => ['phase' => 'TEST', 'message' => 'broadcast works!'],
+    ]));
+    return response()->json(['ok' => true]);
 });
 Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
     Route::get('/metrics', [AdminMetricsController::class, 'show']);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\LobbyReactionSent;
 use Illuminate\Http\Request;
 use App\Models\Lobby;
 use Illuminate\Validation\Rule;
@@ -94,7 +95,23 @@ class LobbyController extends Controller
     }
     public function members(Request $r, string $code) {
         $lobby = Lobby::where('code',$code)->firstOrFail();
-        $members = $lobby->members()->select('users.id','users.name')->get();
+        $members = $lobby->members()->select('users.id','users.name','users.avatar_url')->get();
         return response()->json(['members'=>$members]);
+    }
+    public function sendReaction(Request $request, string $code)
+    {
+    $request->validate(['emoji' => 'required|string|max:10']);
+
+    $lobby = Lobby::where('code', $code)->firstOrFail();
+
+    // Broadcast to everyone EXCEPT the sender
+    // (sender already shows it locally via optimistic update)
+    broadcast(new LobbyReactionSent(
+        $request->emoji,
+        $request->user()->name,
+        $code
+    ))->toOthers();
+
+    return response()->json(['ok' => true]);
     }
 }

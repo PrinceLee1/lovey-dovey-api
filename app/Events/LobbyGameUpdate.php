@@ -10,4 +10,9 @@ class LobbyGameUpdate implements ShouldBroadcastNow {
   public function __construct(public int $sessionId, public array $payload) {}
   public function broadcastOn(){ return new Channel("lobby-game.{$this->sessionId}"); }
   public function broadcastWith(){ return $this->payload; } // e.g. { type:'state', data:{...} }
+  // Add this to LobbyGameUpdate.php
+  public function broadcastAs(): string
+  {
+      return 'LobbyGameUpdate';
+  }
 }
