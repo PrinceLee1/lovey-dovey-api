@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:5173'), 'https://lovey-dovey-coral.vercel.app'],
+    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:5173'), 'https://lovey-dovey-coral.vercel.app','https://lovey.japawell.com'],
 
     'allowed_origins_patterns' => [],
 
