@@ -59,7 +59,9 @@ class LobbyRealTimeController extends Controller
       'settings' => 'nullable|array'
     ]);
     $lobby = Lobby::where('code',$code)->firstOrFail();
-    abort_unless($lobby->host_id === $r->user()->id, 403);
+    if($lobby->host_id != $r->user()->id){
+      abort(403, 'Only the host can start a game');
+    }
 
     $session = LobbyGameSession::create([
       'lobby_id'=>$lobby->id,
