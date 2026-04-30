@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminMetricsController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CoupleSessionController;
 use App\Http\Controllers\DailyChallengeController;
 use App\Http\Controllers\GameAiController;
@@ -99,10 +100,31 @@ Route::middleware('auth:sanctum')->group(function () {
     return response()->json(['ok' => true]);
 });
 Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
-    Route::get('/metrics', [AdminMetricsController::class, 'show']);
-    Route::get('/users',   [AdminUserController::class, 'index']);
-    Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus']);
-    Route::delete('/users/{user}',       [AdminUserController::class, 'destroy']);
+    // Overview stats
+    Route::get('/stats', [AdminController::class, 'stats']);
+ 
+    // Users
+    Route::get('/users',                    [AdminController::class, 'users']);
+    Route::patch('/users/{id}',             [AdminController::class, 'updateUser']);
+    Route::delete('/users/{id}',            [AdminController::class, 'deleteUser']);
+    Route::post('/users/bulk-deactivate',   [AdminController::class, 'bulkDeactivate']);
+    Route::post('/users/bulk-delete',       [AdminController::class, 'bulkDelete']);
+ 
+    // Games
+    Route::get('/games',              [AdminController::class, 'games']);
+    Route::post('/games',             [AdminController::class, 'createGame']);
+    Route::put('/games/{id}',         [AdminController::class, 'updateGame']);
+    Route::patch('/games/{id}',       [AdminController::class, 'patchGame']);
+    Route::delete('/games/{id}',      [AdminController::class, 'deleteGame']);
+    Route::get('/games/recent',       [AdminController::class, 'recentSessions']);
+    Route::get('/games/sessions',     [AdminController::class, 'allSessions']);
+ 
+    // Reports
+    Route::get('/reports', [AdminController::class, 'reports']);
+ 
+    // Settings
+    Route::get('/settings',  [AdminController::class, 'getSettings']);
+    Route::post('/settings', [AdminController::class, 'saveSettings']);
 });
 Route::post('/webhooks/stripe', [SubscriptionController::class, 'webhook']);   
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 class Lobby extends Model
 {
@@ -32,4 +33,24 @@ class Lobby extends Model
         return $this->belongsToMany(User::class, 'lobby_members')
             ->withPivot('role','joined_at')->withTimestamps();
     }
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'lobby_user')
+            ->withTimestamps();
+    }
+ 
+    public function messages(): HasMany
+    {
+        return $this->hasMany(LobbyMessage::class);
+    }
+ 
+    /**
+     * Game sessions played in this lobby.
+     * Used by withCount('sessions') in AdminController.
+     */
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(LobbyGameSession::class, 'lobby_id');
+    }
+
 }
