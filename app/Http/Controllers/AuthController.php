@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Auth;
 use App\Events\PartnerStatusUpdated;
 use App\Notifications\WelcomeEmail;
+use App\Support\Broadcasting;
 use App\Support\DeviceLabel;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
@@ -228,7 +229,7 @@ class AuthController extends Controller
         if ($link) {
             $otherId = $link->user_a_id === $user->id ? $link->user_b_id : $link->user_a_id;
             $link->update(['status' => 'ended', 'ended_at' => now()]);
-            broadcast(new PartnerStatusUpdated($otherId, ['status' => 'ended']));
+            Broadcasting::fire(new PartnerStatusUpdated($otherId, ['status' => 'ended']));
         }
 
         $user->tokens()->delete();

@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use App\Events\PartnerInviteAccepted;
 use App\Events\PartnerInviteRejected;
 use App\Events\PartnerStatusUpdated;
+use App\Support\Broadcasting;
 class PartnerController extends Controller
 {
   // Generate an invite CODE (inviter shares it manually)
@@ -122,7 +123,7 @@ public function accept(Request $r, string $code) {
 
         // Notify inviter (optional but recommended)
         $meUser = User::select('id','name')->find($me->id);
-        broadcast(new PartnerInviteAccepted($invite->inviter_id, [
+        Broadcasting::fire(new PartnerInviteAccepted($invite->inviter_id, [
             'id' => $meUser->id, 'name' => $meUser->name,
         ]));
 
@@ -140,7 +141,7 @@ public function accept(Request $r, string $code) {
     $invite->update(['invitee_id'=>$me->id, 'status'=>'rejected']);
 
     // 🔔 notify inviter
-    broadcast(new PartnerInviteRejected($invite->inviter_id));
+    Broadcasting::fire(new PartnerInviteRejected($invite->inviter_id));
 
     return response()->json(['ok'=>true]);
   }
@@ -164,7 +165,7 @@ public function accept(Request $r, string $code) {
 
     $otherId = $link->user_a_id === $me->id ? $link->user_b_id : $link->user_a_id;
     // 🔔 notify the other user to approve
-    broadcast(new PartnerStatusUpdated($otherId, [
+    Broadcasting::fire(new PartnerStatusUpdated($otherId, [
       'status' => 'pending_unpair',
       'by' => ['id'=>$me->id, 'name'=>$me->name],
     ]));
@@ -184,7 +185,7 @@ public function accept(Request $r, string $code) {
 
     $otherId = $link->user_a_id === $me->id ? $link->user_b_id : $link->user_a_id;
     // 🔔 notify the requester that it’s done
-    broadcast(new PartnerStatusUpdated($otherId, ['status'=>'ended']));
+    Broadcasting::fire(new PartnerStatusUpdated($otherId, ['status'=>'ended']));
 
     return response()->json(['ok'=>true]);
   }
@@ -201,7 +202,7 @@ public function accept(Request $r, string $code) {
     $link->update(['status' => 'active', 'unpair_requested_by' => null]);
 
     $otherId = $link->user_a_id === $me->id ? $link->user_b_id : $link->user_a_id;
-    broadcast(new PartnerStatusUpdated($otherId, ['status' => 'active']));
+    Broadcasting::fire(new PartnerStatusUpdated($otherId, ['status' => 'active']));
 
     return response()->json(['ok' => true]);
 }

@@ -81,9 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me/progress', [ProgressController::class, 'show']);
     Route::get('/me/weekly-summary', [ProgressController::class, 'weeklySummary']);
 
-    Route::post('/sessions', [CoupleSessionController::class,'create']);
-    Route::post('/couple-sessions/start', [CoupleSessionController::class,'start']);
-
+    Route::post('/sessions', [CoupleSessionController::class,'invite']);
+    Route::post('/sessions/{code}/accept', [CoupleSessionController::class,'accept']);
     Route::get('/sessions/{code}', [CoupleSessionController::class,'show']);
     Route::post('/sessions/{code}/action', [CoupleSessionController::class,'action']);
     Route::post('/broadcasting/auth', function (Illuminate\Http\Request $request) {

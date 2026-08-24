@@ -49,5 +49,11 @@ Broadcast::channel('user.{id}', function ($user, int $id) {
 
 // ── Private: couple session ───────────────────────────────────────────────
 Broadcast::channel('couple-session.{code}', function ($user, string $code) {
+    $session = \App\Models\GameSession::where('code', $code)->first();
+
+    if (! $session || ! in_array($user->id, [$session->created_by, $session->partner_user_id])) {
+        return false;
+    }
+
     return ['id' => $user->id, 'name' => $user->name];
 });

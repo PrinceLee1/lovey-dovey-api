@@ -47,6 +47,8 @@ class CoupleSessionTest extends TestCase
                 'turnUserId' => $creator->id,
                 'status' => 'active',
                 'state' => ['done' => 1],
+                'createdBy' => $creator->id,
+                'partnerUserId' => $partner->id,
             ]);
     }
 

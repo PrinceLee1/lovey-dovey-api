@@ -10,6 +10,7 @@ use App\Events\LobbyMessageCreated;
 use App\Models\Lobby;
 use App\Models\LobbyGameSession;
 use App\Models\LobbyMessage;
+use App\Support\Broadcasting;
 use Illuminate\Support\Facades\Gate;
 class LobbyRealTimeController extends Controller
 {
@@ -39,7 +40,7 @@ class LobbyRealTimeController extends Controller
       ])->load('user:id,name');
 
       // Broadcast to others ONLY (the sender won’t receive this event)
-      broadcast(new LobbyMessageCreated($msg, $code))->toOthers();
+      Broadcasting::fire(new LobbyMessageCreated($msg, $code), toOthers: true);
 
       // Return the real message so the sender can swap their optimistic one
       return response()->json([
@@ -71,7 +72,7 @@ class LobbyRealTimeController extends Controller
       'status'=>'active',
     ]);
 
-    broadcast(new LobbyGameStarted($session, $code))->toOthers();
+    Broadcasting::fire(new LobbyGameStarted($session, $code), toOthers: true);
 
     return response()->json(['session' => $session->fresh()]);
   }
@@ -80,7 +81,7 @@ class LobbyRealTimeController extends Controller
   public function pushUpdate(Request $r, string $code, int $sessionId) {
     $payload = $r->validate(['type'=>'required|string','data'=>'nullable|array']);
     // (optional) ensure user belongs to lobby
-    broadcast(new LobbyGameUpdate($sessionId, $payload))->toOthers();
+    Broadcasting::fire(new LobbyGameUpdate($sessionId, $payload), toOthers: true);
     return response()->json(['ok'=>true]);
   }
 
@@ -93,7 +94,7 @@ class LobbyRealTimeController extends Controller
     $session = LobbyGameSession::where('id',$sessionId)->where('lobby_id',$lobby->id)->firstOrFail();
     $session->update(['status'=>'ended','result'=>$data['result'],'ended_at'=>now()]);
 
-    broadcast(new LobbyGameEnded($session, $code))->toOthers();
+    Broadcasting::fire(new LobbyGameEnded($session, $code), toOthers: true);
 
     return response()->json(['ok'=>true]);
   }
@@ -126,7 +127,7 @@ class LobbyRealTimeController extends Controller
   
       // Broadcast to ALL players in the lobby game channel
       // Frontend: echo.channel(`lobby-game.${sessionId}`).listen(".LobbyGameUpdate", ...)
-      broadcast(new LobbyGameUpdate($sessionId, $payload));
+      Broadcasting::fire(new LobbyGameUpdate($sessionId, $payload));
   
       return response()->json(['ok' => true]);
   }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\LobbyReactionSent;
 use App\Notifications\PublicLobbyCreated;
+use App\Support\Broadcasting;
 use Illuminate\Http\Request;
 use App\Models\Lobby;
 use App\Models\User;
@@ -139,11 +140,11 @@ class LobbyController extends Controller
 
     // Broadcast to everyone EXCEPT the sender
     // (sender already shows it locally via optimistic update)
-    broadcast(new LobbyReactionSent(
+    Broadcasting::fire(new LobbyReactionSent(
         $request->emoji,
         $request->user()->name,
         $code
-    ))->toOthers();
+    ), toOthers: true);
 
     return response()->json(['ok' => true]);
     }
