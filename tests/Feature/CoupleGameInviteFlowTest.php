@@ -46,6 +46,23 @@ class CoupleGameInviteFlowTest extends TestCase
         Notification::assertSentTo($partner, CoupleGameInvite::class);
     }
 
+    public function test_invite_email_names_the_actual_game_kind(): void
+    {
+        Notification::fake();
+
+        $me = User::factory()->create();
+        $partner = User::factory()->create();
+        $this->pairUp($me, $partner);
+
+        $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'spice_dice'])->assertStatus(201);
+
+        Notification::assertSentTo($partner, CoupleGameInvite::class, function (CoupleGameInvite $notification) use ($partner) {
+            $mail = $notification->toMail($partner);
+
+            return str_contains($mail->subject, 'Spice Dice') && ! str_contains($mail->subject, 'Truth or Dare');
+        });
+    }
+
     public function test_invite_fails_without_an_active_partner(): void
     {
         $me = User::factory()->create();

@@ -25,10 +25,21 @@ class CoupleGameInvite extends Notification implements ShouldQueue
         return ['mail'];
     }
 
+    /**
+     * Keep in sync with GAME_META in the frontend's src/pages/Session.tsx.
+     */
+    private const GAME_LABELS = [
+        'truth_dare' => 'Truth or Dare',
+        'truth_dare_erotic' => 'Truth or Dare · Plus',
+        'spice_dice' => 'Spice Dice',
+        'emoji_chat' => 'Emoji-Only Chat',
+        'memory_match' => 'Memory Match',
+    ];
+
     public function toMail(object $notifiable): MailMessage
     {
         $joinUrl = rtrim(config('app.frontend_url'), '/')."/session/{$this->session->code}";
-        $gameLabel = str_contains($this->session->kind, 'erotic') ? 'Truth or Dare (Plus)' : 'Truth or Dare';
+        $gameLabel = self::GAME_LABELS[$this->session->kind] ?? 'a game';
 
         return (new MailMessage)
             ->subject("{$this->inviter->name} wants to play {$gameLabel} with you 💕")
