@@ -4,10 +4,16 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\WeeklySummaryService;
 use App\Support\Xp;
 use Carbon\CarbonImmutable;
 class ProgressController extends Controller
 {
+    public function weeklySummary(Request $r)
+    {
+        return response()->json(WeeklySummaryService::build($r->user()));
+    }
+
     public function show(Request $r)
     {
         $u = $r->user();
@@ -22,24 +28,26 @@ class ProgressController extends Controller
         $from = $now->startOfWeek(); // Monday
         $to   = $now->endOfWeek();
 
-        // Distinct active dates this week (games + daily)
-        $gameDays = DB::table('game_histories')
-            ->selectRaw("DATE(CONVERT_TZ(played_at, '+00:00', ?)) as d", [$now->getOffsetString()])
+        // Distinct active dates this week (games + daily), converted to the
+        // user's timezone in PHP rather than via CONVERT_TZ — that's a
+        // MySQL-only function and breaks on SQLite (dev/tests), and the
+        // window is small enough (one week) that pulling raw timestamps is
+        // cheap.
+        $gameTimestamps = DB::table('game_histories')
             ->where('user_id', $u->id)
             ->whereBetween('played_at', [$from->utc(), $to->utc()])
-            ->groupBy('d');
+            ->pluck('played_at');
 
-        $dailyDays = DB::table('daily_challenges')
-            ->selectRaw("DATE(CONVERT_TZ(completed_at, '+00:00', ?)) as d", [$now->getOffsetString()])
+        $dailyTimestamps = DB::table('daily_challenges')
             ->where('user_id', $u->id)
             ->whereNotNull('completed_at')
             ->whereBetween('completed_at', [$from->utc(), $to->utc()])
-            ->groupBy('d');
+            ->pluck('completed_at');
 
-        $distinct = DB::query()->fromSub(
-            $gameDays->union($dailyDays),
-            'x'
-        )->count();
+        $distinct = $gameTimestamps->concat($dailyTimestamps)
+            ->map(fn ($ts) => CarbonImmutable::parse($ts, 'UTC')->setTimezone($tz)->toDateString())
+            ->unique()
+            ->count();
 
         $weekGoal = 7;
         $streakPercent = min(100, (int) round(($distinct / $weekGoal) * 100));

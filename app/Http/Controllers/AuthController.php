@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use Auth;
+use App\Events\PartnerStatusUpdated;
+use App\Support\DeviceLabel;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use App\Models\Partner;
 use App\Models\User;
 use Storage;
 class AuthController extends Controller
@@ -30,7 +33,7 @@ class AuthController extends Controller
             'gender'=>$v['gender'] ?? null,
             'dob'=>$v['dob'] ?? null,
         ]);
-        $token = $user->createToken('web')->plainTextToken;
+        $token = $this->issueToken($user, $r);
         return response()->json(['user'=>$user,'token'=>$token], 201);
     }
 
@@ -40,8 +43,25 @@ class AuthController extends Controller
         if (!$user || !Hash::check($v['password'], $user->password)) {
             return response()->json(['message'=>'Invalid credentials'], 422);
         }
-        $token = $user->createToken('web')->plainTextToken;
+        if ($user->status === 'deleted') {
+            return response()->json(['message'=>'This account has been deleted.'], 403);
+        }
+        if ($user->status === 'deactivated') {
+            return response()->json(['message'=>'Your account has been deactivated. Please contact support.'], 403);
+        }
+        $token = $this->issueToken($user, $r);
         return response()->json(['user'=>$user,'token'=>$token]);
+    }
+
+    private function issueToken(User $user, Request $r): string
+    {
+        $newToken = $user->createToken('web');
+        $newToken->accessToken->forceFill([
+            'ip_address' => $r->ip(),
+            'user_agent' => substr((string) $r->userAgent(), 0, 255),
+        ])->save();
+
+        return $newToken->plainTextToken;
     }
 
     public function forgotPassword(Request $r) {
@@ -98,6 +118,16 @@ class AuthController extends Controller
         $r->user()->update($v);
         return response()->json($r->user());
     }
+    public function updatePrefs(Request $r) {
+        $v = $r->validate([
+            'email_news' => 'sometimes|boolean',
+            'email_reminders' => 'sometimes|boolean',
+            'weekly_summary' => 'sometimes|boolean',
+            'private_profile' => 'sometimes|boolean',
+        ]);
+        $r->user()->update($v);
+        return response()->json($r->user());
+    }
     public function uploadAvatar(Request $r) {
         $v = $r->validate([
             'avatar' => 'required|image|max:2048', // max 2MB
@@ -127,6 +157,34 @@ class AuthController extends Controller
         return response()->json(['message'=>'Logged out']);
     }
 
+    public function sessions(Request $r) {
+        $currentId = $r->user()->currentAccessToken()?->id;
+
+        $sessions = $r->user()->tokens()->orderByDesc('last_used_at')->orderByDesc('created_at')->get()
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'device' => DeviceLabel::parse($t->user_agent),
+                'ip_address' => $t->ip_address,
+                'last_used_at' => optional($t->last_used_at)->toIso8601String(),
+                'created_at' => $t->created_at->toIso8601String(),
+                'is_current' => $t->id === $currentId,
+            ]);
+
+        return response()->json(['sessions' => $sessions]);
+    }
+
+    public function revokeSession(Request $r, int $id) {
+        $currentId = $r->user()->currentAccessToken()?->id;
+        if ($id === $currentId) {
+            return response()->json(['message' => 'Use logout to end your current session'], 422);
+        }
+
+        $deleted = $r->user()->tokens()->where('id', $id)->delete();
+        abort_unless($deleted, 404);
+
+        return response()->json(['ok' => true]);
+    }
+
     public function logoutOthers(Request $r) {
         $current = $r->user()->currentAccessToken();
         $r->user()->tokens()->when($current, fn ($q) => $q->where('id', '!=', $current->id))->delete();
@@ -144,8 +202,20 @@ class AuthController extends Controller
             return response()->json(['message' => 'Admin accounts cannot be self-deleted'], 422);
         }
 
+        // Soft-close the account: the row (and its game history / referenced
+        // data) stays in the database, but it's functionally gone — login()
+        // rejects status 'deleted', and every existing token is revoked below.
+        $link = Partner::where('status', 'active')
+            ->where(fn ($q) => $q->where('user_a_id', $user->id)->orWhere('user_b_id', $user->id))
+            ->first();
+        if ($link) {
+            $otherId = $link->user_a_id === $user->id ? $link->user_b_id : $link->user_a_id;
+            $link->update(['status' => 'ended', 'ended_at' => now()]);
+            broadcast(new PartnerStatusUpdated($otherId, ['status' => 'ended']));
+        }
+
         $user->tokens()->delete();
-        $user->delete();
+        $user->update(['status' => 'deleted', 'deactivated_at' => now()]);
 
         return response()->json(['ok' => true]);
     }

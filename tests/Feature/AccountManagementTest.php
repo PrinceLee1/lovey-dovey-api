@@ -76,7 +76,7 @@ class AccountManagementTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $user->id]);
     }
 
-    public function test_delete_account_deletes_user_and_revokes_tokens(): void
+    public function test_delete_account_is_a_soft_close_not_a_row_delete(): void
     {
         $user = User::factory()->create();
         $token = $user->createToken('web')->plainTextToken;
@@ -86,7 +86,35 @@ class AccountManagementTest extends TestCase
             ->assertStatus(200)
             ->assertJson(['ok' => true]);
 
-        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+        // Row stays — this is intentionally not a hard delete.
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'status' => 'deleted']);
+
+        // But it's functionally gone: no tokens survive, and login is blocked.
+        $this->assertCount(0, $user->fresh()->tokens);
+        $this->postJson('/api/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertStatus(403);
+    }
+
+    public function test_delete_account_ends_active_partner_pairing(): void
+    {
+        $user = User::factory()->create();
+        $partner = User::factory()->create();
+        Partner::create([
+            'user_a_id' => min($user->id, $partner->id),
+            'user_b_id' => max($user->id, $partner->id),
+            'status' => 'active',
+            'started_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->deleteJson('/api/user', ['password' => 'password'])
+            ->assertStatus(200);
+
+        $this->assertDatabaseHas('partners', [
+            'user_a_id' => min($user->id, $partner->id),
+            'user_b_id' => max($user->id, $partner->id),
+            'status' => 'ended',
+        ]);
     }
 
     public function test_admin_cannot_self_delete(): void
@@ -97,6 +125,56 @@ class AccountManagementTest extends TestCase
             ->deleteJson('/api/user', ['password' => 'password'])
             ->assertStatus(422);
 
-        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+        $this->assertDatabaseHas('users', ['id' => $admin->id, 'status' => 'active']);
+    }
+
+    public function test_deactivated_and_deleted_users_cannot_log_in(): void
+    {
+        $deactivated = User::factory()->create(['status' => 'deactivated']);
+        $deleted = User::factory()->create(['status' => 'deleted']);
+
+        $this->postJson('/api/login', ['email' => $deactivated->email, 'password' => 'password'])
+            ->assertStatus(403);
+
+        $this->postJson('/api/login', ['email' => $deleted->email, 'password' => 'password'])
+            ->assertStatus(403);
+    }
+
+    public function test_me_returns_real_json_booleans_not_0_1(): void
+    {
+        // Uncast, these serialize as raw ints — several frontend call sites
+        // do `{user?.is_admin && <Jsx/>}`, and 0 && <Jsx/> in JSX renders
+        // the literal text "0" (React only skips false/null/undefined).
+        $user = User::factory()->create(['is_admin' => false, 'is_plus' => false, 'is_active' => true]);
+
+        $response = $this->actingAs($user)->getJson('/api/me')->assertStatus(200);
+
+        $this->assertSame(false, $response->json('is_admin'));
+        $this->assertSame(false, $response->json('is_plus'));
+        $this->assertSame(true, $response->json('is_active'));
+    }
+
+    public function test_update_prefs_persists_and_returns_booleans(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->putJson('/api/user/prefs', [
+                'email_news' => false,
+                'email_reminders' => false,
+                'weekly_summary' => true,
+                'private_profile' => true,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('email_news', false)
+            ->assertJsonPath('email_reminders', false)
+            ->assertJsonPath('weekly_summary', true)
+            ->assertJsonPath('private_profile', true);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'email_news' => false,
+            'private_profile' => true,
+        ]);
     }
 }

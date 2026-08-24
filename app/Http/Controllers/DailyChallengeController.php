@@ -30,9 +30,19 @@ class DailyChallengeController extends Controller
             : null;
 
         // fetch or create row for this user
-        $row = DailyChallenge::firstOrNew(['user_id'=>$u->id, 'for_date'=>$today]);
+        // NOTE: for_date is cast to 'date', but Eloquent serializes that cast
+        // with a full "H:i:s" suffix on save (getDateFormat() default),
+        // while $today above is a bare "Y-m-d" string. An exact-match lookup
+        // (firstOrNew/firstOrCreate with a plain 'for_date' => $today
+        // condition) would therefore never find the row it just saved,
+        // re-attempt a create on every subsequent call the same day, and
+        // hit the (user_id, for_date) unique constraint. whereDate() wraps
+        // the column in DATE(...) so the comparison is format-independent.
+        $row = DailyChallenge::where('user_id', $u->id)->whereDate('for_date', $today)->first();
 
-        if (!$row->exists) {
+        if (!$row) {
+            $row = new DailyChallenge(['user_id' => $u->id, 'for_date' => $today]);
+
             // generate (duo if partner)
             [$title,$payload,$kind] = $this->generateChallenge($u->id, $partnerId, $today);
 
@@ -45,15 +55,17 @@ class DailyChallengeController extends Controller
 
             // if duo, mirror for partner so they see the same one
             if ($partnerId) {
-                DailyChallenge::firstOrCreate(
-                    ['user_id'=>$partnerId, 'for_date'=>$today],
-                    [
-                        'partner_user_id'=>$u->id,
-                        'kind'=>'duo',
-                        'title'=>$title,
-                        'payload'=>$payload,
-                    ]
-                );
+                $partnerRow = DailyChallenge::where('user_id', $partnerId)->whereDate('for_date', $today)->first();
+                if (!$partnerRow) {
+                    DailyChallenge::create([
+                        'user_id' => $partnerId,
+                        'for_date' => $today,
+                        'partner_user_id' => $u->id,
+                        'kind' => 'duo',
+                        'title' => $title,
+                        'payload' => $payload,
+                    ]);
+                }
             }
         }
 
@@ -78,7 +90,7 @@ class DailyChallengeController extends Controller
         $u = $r->user();
         $today = CarbonImmutable::now('UTC')->toDateString();
 
-        $row = DailyChallenge::where('user_id',$u->id)->where('for_date',$today)->firstOrFail();
+        $row = DailyChallenge::where('user_id',$u->id)->whereDate('for_date',$today)->firstOrFail();
 
         if ($row->status === 'completed') {
             return response()->json(['message'=>'Already completed','awarded'=>0], 200);

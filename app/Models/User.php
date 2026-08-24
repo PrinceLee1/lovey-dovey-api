@@ -19,7 +19,7 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $fillable = ['name','email','password','phone','gender','dob', 'xp', 'streak','streak_updated_for_date','is_admin','status','deactivated_at','is_plus','stripe_subscription_id','plus_expires_at'];
+    protected $fillable = ['name','email','password','phone','gender','dob', 'xp', 'streak','streak_updated_for_date','is_admin','status','deactivated_at','is_plus','stripe_subscription_id','plus_expires_at','email_news','email_reminders','weekly_summary','private_profile'];
 
 
     /**
@@ -45,6 +45,18 @@ class User extends Authenticatable
             'xp' => 'integer',
             'streak_updated_for_date' => 'date',      // or 'immutable_date'
             'deactivated_at' => 'datetime',
+            'email_news' => 'boolean',
+            'email_reminders' => 'boolean',
+            'weekly_summary' => 'boolean',
+            'private_profile' => 'boolean',
+            // Uncast, these serialize as raw 0/1 in JSON — several frontend
+            // call sites do `{user?.is_admin && <Jsx/>}`, and `0 && <Jsx/>`
+            // in JSX renders the literal text "0" instead of nothing (React
+            // only skips false/null/undefined, not falsy numbers). Casting
+            // to boolean here fixes it at the source for every consumer.
+            'is_admin' => 'boolean',
+            'is_plus' => 'boolean',
+            'is_active' => 'boolean',
         ];
     }
     public function lobbies(): BelongsToMany

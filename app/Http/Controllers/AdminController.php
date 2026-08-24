@@ -16,7 +16,7 @@ class AdminController extends Controller
         return response()->json([
             'total_users'       => User::count(),
             'active_users'      => User::where('is_active', true)->count(),
-            'paired_users'      => Partner::whereNotNull('user_a_id')->whereNotNull('user_b_id')->count(),
+            'paired_users'      => Partner::where('status', 'active')->count() * 2,
             'plus_subscribers'  => User::where('is_plus', true)->count(),
             'total_games_played'=> LobbyGameSession::where('status','ended')->count(),
             'games_today'       => LobbyGameSession::whereDate('created_at', today())->count(),
@@ -30,22 +30,40 @@ class AdminController extends Controller
  
     public function users(Request $request)
     {
-        $q = User::with('partner:id,name')->latest();
- 
+        $q = User::latest();
+
         if ($search = $request->search) {
             $q->where(fn($q) => $q->where('name','like',"%$search%")->orWhere('email','like',"%$search%"));
         }
- 
+
+        // "partner" isn't a real Eloquent relation — partners.user_a_id/
+        // user_b_id is a symmetric pivot (either column can hold "this
+        // user"), which belongsToMany can't express. See User::activePartner().
+        $hasActivePartner = function ($sub) {
+            $sub->select(DB::raw(1))->from('partners')
+                ->where('partners.status', 'active')
+                ->where(fn ($w) => $w->whereColumn('partners.user_a_id', 'users.id')
+                    ->orWhereColumn('partners.user_b_id', 'users.id'));
+        };
+
         match($request->filter) {
             'active'     => $q->where('is_active', true),
             'inactive'   => $q->where('is_active', false),
             'plus'       => $q->where('is_plus', true),
-            'no_partner' => $q->whereDoesntHave('partner'),
+            'no_partner' => $q->whereNotExists($hasActivePartner),
             'admin'      => $q->where('is_admin', true),
             default      => null,
         };
- 
-        return $q->paginate($request->per_page ?? 20);
+
+        $paginated = $q->paginate($request->per_page ?? 20);
+
+        $paginated->getCollection()->transform(function (User $user) {
+            $partner = $user->activePartner();
+            $user->setAttribute('partner', $partner ? ['id' => $partner->id, 'name' => $partner->name] : null);
+            return $user;
+        });
+
+        return $paginated;
     }
  
     public function updateUser(Request $request, $id)

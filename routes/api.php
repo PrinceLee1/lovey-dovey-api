@@ -30,6 +30,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me',     [AuthController::class, 'me']);
     Route::post('/logout',[AuthController::class, 'logout']);
     Route::post('/logout-others', [AuthController::class, 'logoutOthers']);
+    // Login sessions/devices — namespaced away from CoupleSessionController's
+    // /sessions/{code} routes below, which are an unrelated feature.
+    Route::get('/account/sessions', [AuthController::class, 'sessions']);
+    Route::delete('/account/sessions/{id}', [AuthController::class, 'revokeSession']);
     Route::delete('/user', [AuthController::class, 'deleteAccount']);
     Route::post('/ai/truth-dare', [GameAiController::class, 'truthDare']);
     Route::get('/history',  [GameHistoryController::class, 'index']);
@@ -37,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai/trivia', [GameAiController::class, 'trivia']);
     Route::post('/ai/charades', [GameAiController::class, 'charades']);
     Route::put('/user', [AuthController::class, 'updateUser']);
+    Route::put('/user/prefs', [AuthController::class, 'updatePrefs']);
     Route::post('/user/avatar', [AuthController::class, 'uploadAvatar']);
     Route::post('/user/password', [AuthController::class, 'changePassword']);
 
@@ -74,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/streaks', [StreakController::class, 'show']);
     Route::get('/me/progress', [ProgressController::class, 'show']);
+    Route::get('/me/weekly-summary', [ProgressController::class, 'weeklySummary']);
 
     Route::post('/sessions', [CoupleSessionController::class,'create']);
     Route::post('/couple-sessions/start', [CoupleSessionController::class,'start']);

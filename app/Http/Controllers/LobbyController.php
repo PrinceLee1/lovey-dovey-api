@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Events\LobbyReactionSent;
+use App\Notifications\PublicLobbyCreated;
 use Illuminate\Http\Request;
 use App\Models\Lobby;
+use App\Models\User;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 class LobbyController extends Controller
 {
@@ -12,6 +15,10 @@ class LobbyController extends Controller
         return Lobby::query()
             ->where('privacy', 'Public')
             ->where('status', 'open')
+            // "Private couple mode" hides a user's own lobbies from this
+            // public discovery listing, even when marked Public — joinable
+            // only via a direct invite link at that point.
+            ->whereHas('host', fn ($q) => $q->where('private_profile', false))
             ->withCount('members')
             ->orderByRaw('COALESCE(start_at, "9999-12-31") asc')
             ->latest('start_at')               // secondary sort
@@ -45,6 +52,18 @@ class LobbyController extends Controller
 
         // host auto-joins
         $lobby->members()->attach($r->user()->id, ['role'=>'host']);
+
+        if ($lobby->privacy === 'Public') {
+            $lobby->load('host');
+            // Queued (PublicLobbyCreated implements ShouldQueue) — dispatching
+            // to every opted-in user must not block this request.
+            User::where('id', '!=', $r->user()->id)
+                ->where('status', 'active')
+                ->where('email_reminders', true)
+                ->chunkById(100, function ($users) use ($lobby) {
+                    Notification::send($users, new PublicLobbyCreated($lobby));
+                });
+        }
 
         return response()->json([
             'lobby' => $lobby->fresh(),
