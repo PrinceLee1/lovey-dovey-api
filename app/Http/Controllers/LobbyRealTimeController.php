@@ -106,7 +106,7 @@ class LobbyRealTimeController extends Controller
   public function gameAction(Request $request, string $code, int $sessionId)
   {
       $request->validate([
-          'type' => 'required|string|in:state,vote,buzz,answer,tick',
+          'type' => 'required|string|in:state,vote,buzz,answer,tick,guess,skip',
           'data' => 'nullable|array',
       ]);
   
