@@ -85,6 +85,16 @@ class LobbyController extends Controller
     public function join(Request $r, string $code) {
         $lobby = Lobby::where('code',$code)->firstOrFail();
 
+        // An existing member (including the host) re-entering must never be
+        // blocked by lobby status/capacity — those only gate new joiners.
+        // Re-attaching would also silently overwrite the host's pivot role
+        // with 'player', so skip it entirely once already a member.
+        $alreadyMember = $lobby->members()->where('users.id', $r->user()->id)->exists();
+
+        if ($alreadyMember) {
+            return response()->json(['ok'=>true]);
+        }
+
         if ($lobby->status !== 'open') {
             return response()->json(['message'=>'Lobby is not open'], 422);
         }
@@ -94,7 +104,7 @@ class LobbyController extends Controller
             return response()->json(['message'=>'Lobby is full'], 422);
         }
 
-        $lobby->members()->syncWithoutDetaching([$r->user()->id => ['role'=>'player']]);
+        $lobby->members()->attach($r->user()->id, ['role'=>'player']);
         return response()->json(['ok'=>true]);
     }
 
