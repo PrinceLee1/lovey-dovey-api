@@ -35,7 +35,13 @@ class AuthController extends Controller
             'phone'=>$v['phone'] ?? null,
             'gender'=>$v['gender'] ?? null,
             'dob'=>$v['dob'] ?? null,
+            'trial_ends_at'=>now()->addDays(14),
         ]);
+        // create() only holds attributes we explicitly set — DB-defaulted
+        // columns like is_plus never make it into this instance, so the
+        // trial accessor below would silently vanish from the JSON response
+        // without this refresh.
+        $user->refresh();
         // A mail-transport hiccup (bad API key, provider downtime) must never
         // block account creation — the welcome email is a nice-to-have.
         try {

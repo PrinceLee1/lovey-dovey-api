@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CoupleSessionController;
 use App\Http\Controllers\DailyChallengeController;
+use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\GameAiController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameHistoryController;
@@ -99,6 +100,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/lobbies/{code}/reactions', [LobbyController::class, 'sendReaction']);
     Route::post('/lobbies/{code}/games/{sessionId}/action', [LobbyRealTimeController::class, 'gameAction']);
 
+    Route::post('/feedback', [FeedbackController::class, 'store']);
+
 
 });
     Route::get('/test-broadcast/{sessionId}', function ($sessionId) {
@@ -134,6 +137,10 @@ Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
     // Settings
     Route::get('/settings',  [AdminController::class, 'getSettings']);
     Route::post('/settings', [AdminController::class, 'saveSettings']);
+
+    // Feedback
+    Route::get('/feedback',            [FeedbackController::class, 'index']);
+    Route::patch('/feedback/{id}',     [FeedbackController::class, 'markReviewed']);
 });
 Route::post('/webhooks/stripe', [SubscriptionController::class, 'webhook']);   
 

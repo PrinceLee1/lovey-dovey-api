@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 class User extends Authenticatable
@@ -19,7 +20,7 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $fillable = ['name','email','password','phone','gender','dob', 'xp', 'streak','streak_updated_for_date','is_admin','status','deactivated_at','is_plus','stripe_subscription_id','plus_expires_at','email_news','email_reminders','weekly_summary','private_profile'];
+    protected $fillable = ['name','email','password','phone','gender','dob', 'xp', 'streak','streak_updated_for_date','is_admin','status','deactivated_at','is_plus','stripe_subscription_id','plus_expires_at','trial_ends_at','email_news','email_reminders','weekly_summary','private_profile'];
 
 
     /**
@@ -57,8 +58,26 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'is_plus' => 'boolean',
             'is_active' => 'boolean',
+            'plus_expires_at' => 'datetime',
+            'trial_ends_at' => 'datetime',
         ];
     }
+
+    /**
+     * Whether the user currently has Plus access, either because they're a
+     * paying subscriber (the raw is_plus column) or their free trial hasn't
+     * ended yet. The raw column stays untouched by the trial — admin revenue
+     * stats and `User::where('is_plus', true)` queries only ever count real
+     * subscribers — this accessor only affects reads of $user->is_plus on a
+     * loaded model (which is how every controller/JSON response gets it).
+     */
+    protected function isPlus(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => (bool) $value || ($this->trial_ends_at !== null && $this->trial_ends_at->isFuture()),
+        );
+    }
+
     public function lobbies(): BelongsToMany
     {
         return $this->belongsToMany(Lobby::class, 'lobby_members')
