@@ -49,11 +49,15 @@ class AdminUserController extends Controller
     }
 
     // DELETE /admin/users/{id}
+    // Permanent, irreversible deletion — User has no SoftDeletes trait/column.
+    // Also cascades to the user's active Partner pairing and all game_histories
+    // rows (see migrations), so this affects their partner's data too.
+    // For a reversible action, use updateStatus() to deactivate instead.
     public function destroy(User $user) {
         if ($user->is_admin) {
             return response()->json(['message'=>'Cannot delete admin'], 422);
         }
-        $user->delete(); // soft delete
+        $user->delete();
         return response()->json(['ok'=>true]);
     }
 }

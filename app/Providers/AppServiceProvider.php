@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Mail\Transport\SendlibTransport;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 
@@ -25,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
 
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
             return config('app.frontend_url')."/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
+        });
+
+        Mail::extend('sendlib', function (array $config) {
+            return new SendlibTransport($config['api_key'] ?? null);
         });
     }
 }

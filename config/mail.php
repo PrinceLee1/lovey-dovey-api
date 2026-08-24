@@ -79,6 +79,11 @@ return [
             'transport' => 'array',
         ],
 
+        'sendlib' => [
+            'transport' => 'sendlib',
+            'api_key' => env('SENDLIB_API_KEY'),
+        ],
+
         'failover' => [
             'transport' => 'failover',
             'mailers' => [

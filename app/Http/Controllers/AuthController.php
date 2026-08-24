@@ -86,7 +86,8 @@ class AuthController extends Controller
 
     public function me(Request $r) {
         $user = Auth::user();
-        $user->load('partner');
+        $partner = $user->activePartner();
+        $user->setAttribute('partner', $partner ? [$partner] : []);
         return response()->json($user);
     }
     public function updateUser(Request $r) {
@@ -124,5 +125,28 @@ class AuthController extends Controller
     public function logout(Request $r) {
         $r->user()->currentAccessToken()->delete();
         return response()->json(['message'=>'Logged out']);
+    }
+
+    public function logoutOthers(Request $r) {
+        $current = $r->user()->currentAccessToken();
+        $r->user()->tokens()->when($current, fn ($q) => $q->where('id', '!=', $current->id))->delete();
+        return response()->json(['message' => 'Other sessions logged out']);
+    }
+
+    public function deleteAccount(Request $r) {
+        $v = $r->validate(['password' => 'required']);
+        $user = $r->user();
+
+        if (!Hash::check($v['password'], $user->password)) {
+            return response()->json(['message' => 'Incorrect password'], 422);
+        }
+        if ($user->is_admin) {
+            return response()->json(['message' => 'Admin accounts cannot be self-deleted'], 422);
+        }
+
+        $user->tokens()->delete();
+        $user->delete();
+
+        return response()->json(['ok' => true]);
     }
 }

@@ -8,7 +8,7 @@ class GameHistory extends Model
 {
     protected $table = 'game_histories';
     protected $fillable = [
-        'user_id','game_id','game_title','kind','category',
+        'user_id','partner_user_id','game_id','game_title','kind','category',
         'duration_minutes','players','difficulty',
         'rounds','skipped','xp_earned','meta','played_at',
     ];

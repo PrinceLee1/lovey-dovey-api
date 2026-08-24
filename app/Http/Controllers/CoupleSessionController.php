@@ -51,8 +51,19 @@ class CoupleSessionController extends Controller
     public function show(Request $r, string $code)
     {
         $s = GameSession::where('code',$code)->firstOrFail();
-        $r->user()->can('view', $s); // optional policy
-        return $s;
+
+        // must be one of the pair — same rule action() enforces
+        abort_unless(in_array($r->user()->id, [$s->created_by, $s->partner_user_id]), 403);
+
+        // camelCase to match the shape session.created/session.updated broadcast
+        return response()->json([
+            'code' => $s->code,
+            'kind' => $s->kind,
+            'round' => $s->round,
+            'turnUserId' => $s->turn_user_id,
+            'status' => $s->status,
+            'state' => $s->state,
+        ]);
     }
 
     public function action(Request $r, string $code)

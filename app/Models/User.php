@@ -59,12 +59,32 @@ class User extends Authenticatable
     {
         return $this->hasMany(Lobby::class, 'host_id');
     }
-    public function partner(): BelongsToMany
+    /**
+     * The user's current active partner, resolved symmetrically across
+     * partners.user_a_id/user_b_id. A plain belongsToMany can't express an
+     * OR across two foreign key columns — which is what the old `partner()`
+     * relation here tried to do, and got wrong: it only matched rows where
+     * this user was user_a_id, so it silently returned empty for whichever
+     * user in a pair happened to be user_b_id (partners.accept() always
+     * stores user_a_id/user_b_id as min(id)/max(id), so this affected
+     * roughly half of all paired users).
+     *
+     * Not an Eloquent relation, so it can't be used with with()/load() —
+     * call it directly.
+     */
+    public function activePartner(): ?self
     {
-        return $this->belongsToMany(User::class, 'partners', 'user_a_id', 'user_b_id')
-            ->withPivot('status', 'started_at', 'ended_at')
-            ->wherePivot('status', 'active')
-            ->withTimestamps();
+        $link = Partner::where('status', 'active')
+            ->where(fn ($q) => $q->where('user_a_id', $this->id)->orWhere('user_b_id', $this->id))
+            ->first();
+
+        if (! $link) {
+            return null;
+        }
+
+        $partnerId = $link->user_a_id === $this->id ? $link->user_b_id : $link->user_a_id;
+
+        return self::find($partnerId);
     }
     public function scopeActive($q){ return $q->where('status','active'); }
 

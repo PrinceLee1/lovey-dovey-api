@@ -29,6 +29,8 @@ Route::post('/reset-password',  [AuthController::class, 'resetPassword']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me',     [AuthController::class, 'me']);
     Route::post('/logout',[AuthController::class, 'logout']);
+    Route::post('/logout-others', [AuthController::class, 'logoutOthers']);
+    Route::delete('/user', [AuthController::class, 'deleteAccount']);
     Route::post('/ai/truth-dare', [GameAiController::class, 'truthDare']);
     Route::get('/history',  [GameHistoryController::class, 'index']);
     Route::post('/history', [GameHistoryController::class, 'store']);
