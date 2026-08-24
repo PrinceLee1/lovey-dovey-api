@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Auth;
 use App\Events\PartnerStatusUpdated;
+use App\Notifications\WelcomeEmail;
 use App\Support\DeviceLabel;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ class AuthController extends Controller
             'gender'=>$v['gender'] ?? null,
             'dob'=>$v['dob'] ?? null,
         ]);
+        $user->notify(new WelcomeEmail());
         $token = $this->issueToken($user, $r);
         return response()->json(['user'=>$user,'token'=>$token], 201);
     }
