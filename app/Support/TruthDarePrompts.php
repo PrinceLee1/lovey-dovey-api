@@ -94,7 +94,7 @@ class TruthDarePrompts
     {
         $v = strtolower($kindOrCategory);
 
-        return str_contains($v, 'erotic') || str_contains($v, 'spicy') || str_contains($v, 'plus')
+        return str_contains($v, 'erotic') || str_contains($v, 'spicy') || str_contains($v, 'spice') || str_contains($v, 'plus')
             ? 'spicy'
             : 'romantic';
     }
