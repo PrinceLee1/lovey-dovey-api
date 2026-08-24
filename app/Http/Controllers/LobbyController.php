@@ -7,6 +7,7 @@ use App\Notifications\PublicLobbyCreated;
 use Illuminate\Http\Request;
 use App\Models\Lobby;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 class LobbyController extends Controller
@@ -55,14 +56,17 @@ class LobbyController extends Controller
 
         if ($lobby->privacy === 'Public') {
             $lobby->load('host');
-            // Queued (PublicLobbyCreated implements ShouldQueue) — dispatching
-            // to every opted-in user must not block this request.
-            User::where('id', '!=', $r->user()->id)
-                ->where('status', 'active')
-                ->where('email_reminders', true)
-                ->chunkById(100, function ($users) use ($lobby) {
-                    Notification::send($users, new PublicLobbyCreated($lobby));
-                });
+            // A mail-transport hiccup here must never fail lobby creation.
+            try {
+                User::where('id', '!=', $r->user()->id)
+                    ->where('status', 'active')
+                    ->where('email_reminders', true)
+                    ->chunkById(100, function ($users) use ($lobby) {
+                        Notification::send($users, new PublicLobbyCreated($lobby));
+                    });
+            } catch (\Throwable $e) {
+                Log::warning('Public lobby notification failed to send: '.$e->getMessage());
+            }
         }
 
         return response()->json([

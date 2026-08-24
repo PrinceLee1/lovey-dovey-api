@@ -9,6 +9,7 @@ use App\Support\DeviceLabel;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -34,7 +35,14 @@ class AuthController extends Controller
             'gender'=>$v['gender'] ?? null,
             'dob'=>$v['dob'] ?? null,
         ]);
-        $user->notify(new WelcomeEmail());
+        // A mail-transport hiccup (bad API key, provider downtime) must never
+        // block account creation — the welcome email is a nice-to-have.
+        try {
+            $user->notify(new WelcomeEmail());
+        } catch (\Throwable $e) {
+            Log::warning('Welcome email failed to send: '.$e->getMessage());
+        }
+
         $token = $this->issueToken($user, $r);
         return response()->json(['user'=>$user,'token'=>$token], 201);
     }
@@ -69,10 +77,17 @@ class AuthController extends Controller
     public function forgotPassword(Request $r) {
         $r->validate(['email' => 'required|email']);
 
-        $status = PasswordBroker::sendResetLink($r->only('email'));
+        try {
+            $status = PasswordBroker::sendResetLink($r->only('email'));
 
-        if ($status === PasswordBroker::RESET_THROTTLED) {
-            return response()->json(['message' => __($status)], 429);
+            if ($status === PasswordBroker::RESET_THROTTLED) {
+                return response()->json(['message' => __($status)], 429);
+            }
+        } catch (\Throwable $e) {
+            // A mail-transport hiccup (bad API key, provider downtime) must
+            // never surface here — that would also leak whether the email
+            // is registered, defeating the point of the generic response below.
+            Log::warning('Password reset email failed to send: '.$e->getMessage());
         }
 
         // Always respond with a generic success message, whether or not the

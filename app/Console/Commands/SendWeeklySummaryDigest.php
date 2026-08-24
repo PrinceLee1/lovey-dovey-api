@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Notifications\WeeklySummaryDigest;
 use App\Support\WeeklySummaryService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 class SendWeeklySummaryDigest extends Command
@@ -29,8 +30,13 @@ class SendWeeklySummaryDigest extends Command
                         continue;
                     }
 
-                    Notification::send($user, new WeeklySummaryDigest($summary));
-                    $sent++;
+                    // One user's mail failure must not stop the rest of the batch.
+                    try {
+                        Notification::send($user, new WeeklySummaryDigest($summary));
+                        $sent++;
+                    } catch (\Throwable $e) {
+                        Log::warning("Weekly summary digest failed for user {$user->id}: ".$e->getMessage());
+                    }
                 }
             });
 
