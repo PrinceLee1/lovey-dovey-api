@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use Auth;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use App\Models\User;
 use Storage;
@@ -39,6 +42,46 @@ class AuthController extends Controller
         }
         $token = $user->createToken('web')->plainTextToken;
         return response()->json(['user'=>$user,'token'=>$token]);
+    }
+
+    public function forgotPassword(Request $r) {
+        $r->validate(['email' => 'required|email']);
+
+        $status = PasswordBroker::sendResetLink($r->only('email'));
+
+        if ($status === PasswordBroker::RESET_THROTTLED) {
+            return response()->json(['message' => __($status)], 429);
+        }
+
+        // Always respond with a generic success message, whether or not the
+        // email is registered, so requests can't be used to enumerate users.
+        return response()->json(['message' => 'If an account exists for that email, a password reset link has been sent.']);
+    }
+
+    public function resetPassword(Request $r) {
+        $r->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => ['required','confirmed',Password::min(8)],
+        ]);
+
+        $status = PasswordBroker::reset(
+            $r->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user) use ($r) {
+                $user->forceFill([
+                    'password' => Hash::make($r->string('password')),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            return response()->json(['message' => __($status)], 422);
+        }
+
+        return response()->json(['message' => __($status)]);
     }
 
     public function me(Request $r) {
