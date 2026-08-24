@@ -18,6 +18,7 @@ class GameSeeder extends Seeder
                 'duration' => 10,
                 'players' => 2,
                 'difficulty' => 'Easy',
+                'partner_required' => true,
             ],
             [
                 'kind' => 'emoji_chat',
@@ -27,6 +28,7 @@ class GameSeeder extends Seeder
                 'duration' => 5,
                 'players' => 2,
                 'difficulty' => 'Easy',
+                'partner_required' => true,
             ],
             [
                 'kind' => 'spice_dice',
@@ -36,6 +38,7 @@ class GameSeeder extends Seeder
                 'duration' => 8,
                 'players' => 2,
                 'difficulty' => 'Medium',
+                'partner_required' => true,
             ],
             [
                 'kind' => 'memory_match',
@@ -45,6 +48,7 @@ class GameSeeder extends Seeder
                 'duration' => 7,
                 'players' => 2,
                 'difficulty' => 'Medium',
+                'partner_required' => true,
             ],
             [
                 'kind' => 'trivia',
