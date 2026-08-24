@@ -31,6 +31,45 @@ class CoupleGameKindsTest extends TestCase
         return $code;
     }
 
+    public function test_side_chat_works_regardless_of_turn_or_game_kind(): void
+    {
+        $host = User::factory()->create();
+        $partner = User::factory()->create();
+        $this->pairUp($host, $partner);
+        // Host owns turn_user_id on a turn-based game — chat must not care.
+        $code = $this->inviteAndAccept($host, $partner, 'memory_match');
+
+        $fromPartner = $this->actingAs($partner, 'sanctum')
+            ->postJson("/api/sessions/{$code}/action", ['type' => 'chat', 'payload' => ['text' => 'hey, good luck!']])
+            ->assertStatus(200);
+        $this->assertCount(1, $fromPartner->json('state.chatLog'));
+        $this->assertSame($partner->id, $fromPartner->json('state.chatLog.0.from'));
+
+        $fromHost = $this->actingAs($host, 'sanctum')
+            ->postJson("/api/sessions/{$code}/action", ['type' => 'chat', 'payload' => ['text' => 'you too 😘']])
+            ->assertStatus(200);
+        $this->assertCount(2, $fromHost->json('state.chatLog'));
+
+        // Side chat must not interfere with the game's own turn-gated deck state.
+        $this->assertNotEmpty($fromHost->json('state.deck'));
+    }
+
+    public function test_side_chat_rejects_empty_or_overlong_messages(): void
+    {
+        $host = User::factory()->create();
+        $partner = User::factory()->create();
+        $this->pairUp($host, $partner);
+        $code = $this->inviteAndAccept($host, $partner, 'truth_dare');
+
+        $this->actingAs($host, 'sanctum')
+            ->postJson("/api/sessions/{$code}/action", ['type' => 'chat', 'payload' => ['text' => '']])
+            ->assertStatus(422);
+
+        $this->actingAs($host, 'sanctum')
+            ->postJson("/api/sessions/{$code}/action", ['type' => 'chat', 'payload' => ['text' => str_repeat('a', 501)]])
+            ->assertStatus(422);
+    }
+
     public function test_spice_dice_only_ever_draws_dares(): void
     {
         $host = User::factory()->create();

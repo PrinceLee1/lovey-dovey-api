@@ -141,6 +141,18 @@ class CoupleSessionController extends Controller
             abort(422, 'This session is not active.');
         }
 
+        // Side chat — always available regardless of turn or game kind (the
+        // Emoji Chat *game* has its own separate messaging and doesn't use
+        // this). Never turn-gated: chatting must not depend on whose go it is.
+        if ($v['type'] === 'chat') {
+            $this->applyChatMessage($s, $me, $v['payload'] ?? []);
+            $s->save();
+
+            Broadcasting::fire(new CoupleSessionUpdated($s), toOthers: true);
+
+            return response()->json($this->present($s));
+        }
+
         // Emoji Chat has no turns — either partner can send at any time.
         if ($s->kind === 'emoji_chat') {
             $this->applyChatAction($s, $me, $v['type'], $v['payload'] ?? []);
@@ -216,6 +228,24 @@ class CoupleSessionController extends Controller
             default:
                 abort(422, 'Unknown action type.');
         }
+
+        $s->state = $state;
+    }
+
+    // ── Side chat (any game kind) ───────────────────────────────────────────
+    // Free text, unlike Emoji Chat's own emoji-only messages — this is just
+    // casual conversation alongside whatever game is being played.
+    private function applyChatMessage(GameSession $s, User $me, array $payload): void
+    {
+        $text = trim((string) ($payload['text'] ?? ''));
+        if ($text === '' || mb_strlen($text) > 500) {
+            abort(422, 'Invalid message.');
+        }
+
+        $state = $s->state ?? [];
+        $log = $state['chatLog'] ?? [];
+        $log[] = ['from' => $me->id, 'text' => $text, 'at' => now()->toISOString()];
+        $state['chatLog'] = array_slice($log, -100);
 
         $s->state = $state;
     }
