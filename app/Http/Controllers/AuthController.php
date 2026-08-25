@@ -66,6 +66,7 @@ class AuthController extends Controller
         if ($user->status === 'deactivated') {
             return response()->json(['message'=>'Your account has been deactivated. Please contact support.'], 403);
         }
+        $user->forceFill(['last_login_at' => now()])->save();
         $token = $this->issueToken($user, $r);
         return response()->json(['user'=>$user,'token'=>$token]);
     }

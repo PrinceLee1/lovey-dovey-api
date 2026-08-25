@@ -18,7 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
         ]);
 
-        //
+        // Applies the 'api' rate limiter (see AppServiceProvider) to every
+        // api.php route — general abuse/DoS protection on top of the
+        // stricter 'auth' limiter applied directly to the login/register
+        // endpoints below.
+        $middleware->throttleApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

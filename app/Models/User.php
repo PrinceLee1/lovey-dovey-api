@@ -20,7 +20,7 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $fillable = ['name','email','password','phone','gender','dob', 'xp', 'streak','streak_updated_for_date','is_admin','status','deactivated_at','is_plus','stripe_subscription_id','plus_expires_at','trial_ends_at','email_news','email_reminders','weekly_summary','private_profile'];
+    protected $fillable = ['name','email','password','phone','gender','dob', 'xp', 'streak','streak_updated_for_date','is_admin','status','deactivated_at','last_login_at','is_plus','stripe_subscription_id','plus_expires_at','trial_ends_at','email_news','email_reminders','weekly_summary','private_profile'];
 
 
     /**
@@ -46,6 +46,7 @@ class User extends Authenticatable
             'xp' => 'integer',
             'streak_updated_for_date' => 'date',      // or 'immutable_date'
             'deactivated_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'email_news' => 'boolean',
             'email_reminders' => 'boolean',
             'weekly_summary' => 'boolean',
