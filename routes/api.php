@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAnnouncementController;
 use App\Http\Controllers\Admin\AdminMetricsController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\AdminController;
@@ -143,6 +144,10 @@ Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function(){
     // Feedback
     Route::get('/feedback',            [FeedbackController::class, 'index']);
     Route::patch('/feedback/{id}',     [FeedbackController::class, 'markReviewed']);
+
+    // Feature announcements (email blasts to opted-in users)
+    Route::get('/announcements',  [AdminAnnouncementController::class, 'index']);
+    Route::post('/announcements', [AdminAnnouncementController::class, 'store']);
 });
 Route::post('/webhooks/stripe', [SubscriptionController::class, 'webhook']);   
 
