@@ -153,6 +153,13 @@ class AuthController extends Controller
         $r->user()->update($v);
         return response()->json($r->user());
     }
+    public function completeTour(Request $r) {
+        $user = $r->user();
+        if (!$user->tour_completed_at) {
+            $user->update(['tour_completed_at' => now()]);
+        }
+        return response()->json($user);
+    }
     public function uploadAvatar(Request $r) {
         $v = $r->validate([
             'avatar' => 'required|image|max:2048', // max 2MB

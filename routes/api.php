@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user/prefs', [AuthController::class, 'updatePrefs']);
     Route::post('/user/avatar', [AuthController::class, 'uploadAvatar']);
     Route::post('/user/password', [AuthController::class, 'changePassword']);
+    Route::post('/user/tour/complete', [AuthController::class, 'completeTour']);
 
     Route::get('/lobbies/public', [LobbyController::class, 'indexPublic']);
     Route::get('/lobbies/mine',   [LobbyController::class, 'my']);
