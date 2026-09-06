@@ -63,6 +63,66 @@ class CoupleGameInviteFlowTest extends TestCase
         });
     }
 
+    public function test_reinviting_the_same_kind_resumes_the_existing_session_instead_of_making_a_new_one(): void
+    {
+        $me = User::factory()->create();
+        $partner = User::factory()->create();
+        $this->pairUp($me, $partner);
+
+        $first = $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'truth_dare'])->assertStatus(201);
+
+        // Simulates: player hit the browser back button mid-invite and re-clicked
+        // the same game tile — this must resume the existing session, not mint
+        // a fresh one (that was the reported "game restarts" bug).
+        $second = $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'truth_dare'])->assertStatus(200);
+
+        $this->assertSame($first->json('code'), $second->json('code'));
+        $this->assertSame(1, GameSession::where('created_by', $me->id)->count());
+    }
+
+    public function test_reinviting_still_resumes_the_pairs_active_session_after_the_partner_accepts(): void
+    {
+        $me = User::factory()->create();
+        $partner = User::factory()->create();
+        $this->pairUp($me, $partner);
+
+        $code = $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'truth_dare'])->json('code');
+        $this->actingAs($partner, 'sanctum')->postJson("/api/sessions/{$code}/accept")->assertStatus(200);
+
+        // Either side re-clicking the tile mid-game should land back on the
+        // same active session, not abandon progress for a fresh one.
+        $resumed = $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'truth_dare'])->assertStatus(200);
+        $this->assertSame($code, $resumed->json('code'));
+        $this->assertSame('active', $resumed->json('status'));
+    }
+
+    public function test_a_different_game_kind_still_starts_a_new_session(): void
+    {
+        $me = User::factory()->create();
+        $partner = User::factory()->create();
+        $this->pairUp($me, $partner);
+
+        $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'truth_dare'])->assertStatus(201);
+        $second = $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'memory_match'])->assertStatus(201);
+
+        $this->assertSame('memory_match', $second->json('kind'));
+        $this->assertSame(2, GameSession::where('created_by', $me->id)->count());
+    }
+
+    public function test_ended_sessions_do_not_block_starting_a_fresh_one(): void
+    {
+        $me = User::factory()->create();
+        $partner = User::factory()->create();
+        $this->pairUp($me, $partner);
+
+        $code = $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'truth_dare'])->json('code');
+        $this->actingAs($partner, 'sanctum')->postJson("/api/sessions/{$code}/accept");
+        $this->actingAs($me, 'sanctum')->postJson("/api/sessions/{$code}/action", ['type' => 'finish'])->assertStatus(200);
+
+        $fresh = $this->actingAs($me, 'sanctum')->postJson('/api/sessions', ['kind' => 'truth_dare'])->assertStatus(201);
+        $this->assertNotSame($code, $fresh->json('code'));
+    }
+
     public function test_invite_fails_without_an_active_partner(): void
     {
         $me = User::factory()->create();

@@ -26,6 +26,13 @@ class CoupleSessionController extends Controller
      * Invite the caller's active partner to a new couple game. Creates the
      * session in 'waiting' status — it only becomes playable once the
      * partner calls accept().
+     *
+     * Idempotent per (partner pair, kind): if the pair already has a
+     * waiting/active session of this kind, that's returned instead of
+     * minting a new one. Without this, hitting the browser back button
+     * mid-game and re-clicking the same game tile created a brand-new
+     * session every time — from the player's side that looked exactly
+     * like "the game restarted".
      */
     public function invite(Request $r)
     {
@@ -38,6 +45,19 @@ class CoupleSessionController extends Controller
             ->firstOrFail();
 
         $partnerId = $pair->user_a_id === $me->id ? $pair->user_b_id : $pair->user_a_id;
+
+        $existing = GameSession::where('kind', $r->kind)
+            ->whereIn('status', ['waiting', 'active'])
+            ->where(function ($q) use ($me, $partnerId) {
+                $q->where(fn ($q2) => $q2->where('created_by', $me->id)->where('partner_user_id', $partnerId))
+                    ->orWhere(fn ($q2) => $q2->where('created_by', $partnerId)->where('partner_user_id', $me->id));
+            })
+            ->latest()
+            ->first();
+
+        if ($existing) {
+            return response()->json($this->present($existing));
+        }
 
         $session = GameSession::create([
             'code' => Str::upper(Str::random(6)),
