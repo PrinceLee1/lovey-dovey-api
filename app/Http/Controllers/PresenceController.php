@@ -61,8 +61,16 @@ class PresenceController extends Controller
         // pending in either direction, or blocked) shouldn't show up as a
         // discoverable "online other" — they belong in the Friends or
         // Requests tab instead, not Find Players.
+        // toBase() is required here: $allFriendships is an Eloquent Collection,
+        // and map() preserves that class even though the mapped values are
+        // plain ints, not models. Eloquent Collection's unique() (with no
+        // key argument) calls getDictionary(), which assumes every item is a
+        // Model and calls ->getKey() on it — crashing with "Call to a member
+        // function getKey() on int". toBase() converts to a plain Support
+        // Collection first, where unique() just does a normal scalar compare.
         $excludedIds = $allFriendships
             ->map(fn ($f) => (int) $f->requester_id === (int) $me->id ? $f->addressee_id : $f->requester_id)
+            ->toBase()
             ->push($me->id)
             ->unique()
             ->values();
