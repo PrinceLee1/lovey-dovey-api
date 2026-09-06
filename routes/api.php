@@ -15,6 +15,7 @@ use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LobbyController;
 use App\Http\Controllers\LobbyRealTimeController;
 use App\Http\Controllers\PartnerController;
+use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\StreakController;
 use App\Http\Controllers\SubscriptionController;
@@ -85,6 +86,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/friends/reject/{friendship}', [FriendshipController::class, 'reject']);
     Route::post('/friends/block/{user}',    [FriendshipController::class, 'block']);
     Route::delete('/friends/{friendship}',  [FriendshipController::class, 'destroy']);
+
+    Route::post('/presence/update',  [PresenceController::class, 'update']);
+    Route::get('/presence/friends',  [PresenceController::class, 'friends']);
 
     Route::get('/daily-challenge', [DailyChallengeController::class, 'show']);
     Route::post('/daily-challenge/complete', [DailyChallengeController::class, 'complete']);

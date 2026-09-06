@@ -47,6 +47,17 @@ Broadcast::channel('user.{id}', function ($user, int $id) {
     return (int) $user->id === $id;
 });
 
+// ── Private: per-user presence updates (see UserPresenceUpdated) ─────────
+// Frontend: echo.private(`presence.${id}`) → Pusher sends "private-presence.5"
+// → Laravel strips "private-" → looks up "presence.5", matching this string.
+// Any authenticated user can listen to a friend's presence.{id} channel —
+// the frontend only ever subscribes to the caller's own accepted friends,
+// and this only broadcasts a status string, so there's nothing to gate here
+// beyond "must be logged in".
+Broadcast::channel('presence.{id}', function ($user, int $id) {
+    return true;
+});
+
 // ── Private: couple session ───────────────────────────────────────────────
 Broadcast::channel('couple-session.{code}', function ($user, string $code) {
     $session = \App\Models\GameSession::where('code', $code)->first();
