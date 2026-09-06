@@ -8,7 +8,38 @@ use Illuminate\Http\Request;
 
 class GameAiController extends Controller
 {
-        /**
+    /**
+     * Rotates through $buckets separately-cached batches under $baseKey
+     * instead of one single shared cache entry. Every lobby/session that
+     * requested the same category+difficulty within the TTL window used to
+     * get back the exact same generated set — this is why questions
+     * visibly repeated across games. Each call still benefits from caching
+     * (avoiding an OpenAI call whenever a bucket is warm), but the pool
+     * they draw from is $buckets times bigger.
+     */
+    private function rotatingCache(string $baseKey, int $buckets, \Illuminate\Support\Carbon $ttl, \Closure $generate, \Closure $isGoodEnough)
+    {
+        $cursorKey = "{$baseKey}:cursor";
+        $bucket = Cache::get($cursorKey, 0);
+        $key = "{$baseKey}:b{$bucket}";
+
+        $cached = Cache::get($key);
+        if ($cached) {
+            Cache::put($cursorKey, ($bucket + 1) % $buckets, $ttl);
+
+            return $cached;
+        }
+
+        $result = $generate();
+        if ($isGoodEnough($result)) {
+            Cache::put($key, $result, $ttl);
+            Cache::put($cursorKey, ($bucket + 1) % $buckets, $ttl);
+        }
+
+        return $result;
+    }
+
+    /**
      * Generate Truth/Dare prompts using OpenAI Structured Outputs
      * and cache results in Redis.
      */
@@ -46,12 +77,6 @@ class GameAiController extends Controller
 
         // 6 hours cache (tune for your needs)
         $ttl = now()->addHours(6);
-
-        // Use cache if available
-        $cached = Cache::get($cacheKey);
-        if ($cached && is_array($cached) && isset($cached['truths'], $cached['dares'])) {
-            return response()->json($cached);
-        }
 
         // ----- Structured Outputs request -----
         // JSON Schema guaranteeing { truths: string[], dares: string[] }
@@ -119,35 +144,32 @@ Return only JSON that satisfies the schema.
             ],
         ];
 
-        $resp = Http::withToken(config('services.openai.key'))
-            ->timeout(40)
-            ->post('https://api.openai.com/v1/chat/completions', $payload)
-            ->throw()
-            ->json();
+        $result = $this->rotatingCache($cacheKey, 3, $ttl, function () use ($payload) {
+            $resp = Http::withToken(config('services.openai.key'))
+                ->timeout(40)
+                ->post('https://api.openai.com/v1/chat/completions', $payload)
+                ->throw()
+                ->json();
 
-        // With Structured Outputs on Chat Completions, the assistant's message content is JSON
-        $content = $resp['choices'][0]['message']['content'] ?? '{}';
-        $parsed  = json_decode($content, true) ?: [];
+            // With Structured Outputs on Chat Completions, the assistant's message content is JSON
+            $content = $resp['choices'][0]['message']['content'] ?? '{}';
+            $parsed  = json_decode($content, true) ?: [];
 
-        // Minimal sanitize & uniq
-        $clean = function ($arr) {
-            return collect($arr ?? [])
-                ->filter(fn ($s) => is_string($s) && mb_strlen(trim($s)) >= 4)
-                ->map(fn ($s) => trim(preg_replace('/\s+/', ' ', $s)))
-                ->unique()
-                ->values()
-                ->all();
-        };
+            // Minimal sanitize & uniq
+            $clean = function ($arr) {
+                return collect($arr ?? [])
+                    ->filter(fn ($s) => is_string($s) && mb_strlen(trim($s)) >= 4)
+                    ->map(fn ($s) => trim(preg_replace('/\s+/', ' ', $s)))
+                    ->unique()
+                    ->values()
+                    ->all();
+            };
 
-        $result = [
-            'truths' => $clean($parsed['truths'] ?? []),
-            'dares'  => $clean($parsed['dares']  ?? []),
-        ];
-
-        // backstop: if model returned fewer than requested, don’t cache a “bad” batch
-        if (count($result['truths']) >= $countTruths && count($result['dares']) >= $countDares) {
-            Cache::put($cacheKey, $result, $ttl);
-        }
+            return [
+                'truths' => $clean($parsed['truths'] ?? []),
+                'dares'  => $clean($parsed['dares']  ?? []),
+            ];
+        }, fn ($result) => count($result['truths']) >= $countTruths && count($result['dares']) >= $countDares);
 
         return response()->json($result);
     }
@@ -163,23 +185,19 @@ Return only JSON that satisfies the schema.
 
         $category   = $v['category']   ?? 'General';
         $difficulty = $v['difficulty'] ?? 'Medium';
-        $count      = $v['count']      ?? 12;
+        $count      = $v['count']      ?? 24;
         $names      = $v['names']      ?? null;
         $personal   = $v['personalize'] ?? false; // default false to increase cache hits
 
         // Cache key (exclude names by default)
         $key = implode(':', [
-            'trivia','v1',
+            'trivia','v2',
             strtolower($category),
             strtolower($difficulty),
             "n{$count}"
         ]);
         if ($personal && $names) {
             $key .= ':p:' . substr(sha1(implode('|', $names)), 0, 10);
-        }
-
-        if ($cached = Cache::get($key)) {
-            return response()->json($cached);
         }
 
         $schema = [
@@ -244,28 +262,26 @@ Return only JSON that satisfies the schema.
             ],
         ];
 
-        $resp = Http::withToken(config('services.openai.key'))
-            ->timeout(45)->post('https://api.openai.com/v1/chat/completions', $payload)
-            ->throw()->json();
+        $out = $this->rotatingCache($key, 3, now()->addHours(6), function () use ($payload) {
+            $resp = Http::withToken(config('services.openai.key'))
+                ->timeout(45)->post('https://api.openai.com/v1/chat/completions', $payload)
+                ->throw()->json();
 
-        $content = $resp['choices'][0]['message']['content'] ?? '{}';
-        $parsed  = json_decode($content, true) ?: [];
+            $content = $resp['choices'][0]['message']['content'] ?? '{}';
+            $parsed  = json_decode($content, true) ?: [];
 
-        // sanitize
-        $clean = collect($parsed['questions'] ?? [])
-            ->filter(function ($q) {
-                return is_array($q)
-                    && isset($q['question'], $q['options'], $q['correctIndex'])
-                    && is_array($q['options']) && count($q['options']) === 4
-                    && $q['correctIndex'] >= 0 && $q['correctIndex'] <= 3;
-            })
-            ->values()->all();
+            // sanitize
+            $clean = collect($parsed['questions'] ?? [])
+                ->filter(function ($q) {
+                    return is_array($q)
+                        && isset($q['question'], $q['options'], $q['correctIndex'])
+                        && is_array($q['options']) && count($q['options']) === 4
+                        && $q['correctIndex'] >= 0 && $q['correctIndex'] <= 3;
+                })
+                ->values()->all();
 
-        $out = ['questions' => $clean];
-
-        if (count($clean) >= $count) {
-            Cache::put($key, $out, now()->addHours(6));
-        }
+            return ['questions' => $clean];
+        }, fn ($out) => count($out['questions']) >= $count);
 
         return response()->json($out);
     }
