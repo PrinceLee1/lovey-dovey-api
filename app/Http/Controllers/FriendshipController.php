@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\FriendRequestAccepted;
+use App\Events\FriendRequestReceived;
 use App\Models\Friendship;
 use App\Models\User;
+use App\Support\Broadcasting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -35,6 +38,14 @@ class FriendshipController extends Controller
                 'status' => 'pending',
             ]);
 
+            Broadcasting::fire(new FriendRequestReceived($target->id, [
+                'request' => [
+                    'id' => $friendship->id,
+                    'created_at' => $friendship->created_at,
+                    'requester' => ['id' => $me->id, 'name' => $me->name, 'avatar_url' => $me->avatar_url],
+                ],
+            ]));
+
             return response()->json(['friendship' => $friendship], 201);
         });
     }
@@ -55,6 +66,10 @@ class FriendshipController extends Controller
             }
 
             $f->update(['status' => 'accepted']);
+
+            Broadcasting::fire(new FriendRequestAccepted($f->requester_id, [
+                'friend' => ['id' => $me->id, 'name' => $me->name, 'avatar_url' => $me->avatar_url],
+            ]));
 
             return response()->json(['friendship' => $f]);
         });
