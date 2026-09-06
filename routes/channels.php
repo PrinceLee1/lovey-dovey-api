@@ -63,6 +63,11 @@ Broadcast::channel('invites.{id}', function ($user, int $id) {
     return (int) $user->id === $id;
 });
 
+// ── Private: per-user friend activity feed (see FriendActivityLogged) ────
+Broadcast::channel('feed.{id}', function ($user, int $id) {
+    return (int) $user->id === $id;
+});
+
 // ── Private: couple session ───────────────────────────────────────────────
 Broadcast::channel('couple-session.{code}', function ($user, string $code) {
     $session = \App\Models\GameSession::where('code', $code)->first();

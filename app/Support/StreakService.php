@@ -2,6 +2,7 @@
 // app/Support/StreakService.php
 namespace App\Support;
 
+use App\Actions\LogFriendActivity;
 use App\Models\Partner;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -33,6 +34,10 @@ class StreakService
             'streak_longest'            => $longest,
             'streak_updated_for_date'   => $today,
         ])->save();
+
+        if ($current > 0 && $current % 7 === 0) {
+            LogFriendActivity::log($u->id, 'streak_milestone', ['streak_days' => $current]);
+        }
     }
 
     /**

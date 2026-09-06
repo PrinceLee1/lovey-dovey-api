@@ -7,6 +7,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CoupleSessionController;
 use App\Http\Controllers\DailyChallengeController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\FriendActivityController;
 use App\Http\Controllers\FriendshipController;
 use App\Http\Controllers\GameInviteController;
 use App\Http\Controllers\GameAiController;
@@ -87,6 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/friends/reject/{friendship}', [FriendshipController::class, 'reject']);
     Route::post('/friends/block/{user}',    [FriendshipController::class, 'block']);
     Route::delete('/friends/{friendship}',  [FriendshipController::class, 'destroy']);
+    Route::get('/friends/activity',         [FriendActivityController::class, 'index']);
 
     Route::post('/presence/update',  [PresenceController::class, 'update']);
     Route::get('/presence/friends',  [PresenceController::class, 'friends']);

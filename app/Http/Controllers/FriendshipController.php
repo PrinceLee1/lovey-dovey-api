@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\LogFriendActivity;
 use App\Events\FriendRequestAccepted;
 use App\Events\FriendRequestReceived;
 use App\Models\Friendship;
@@ -56,7 +57,7 @@ class FriendshipController extends Controller
         $me = $r->user();
 
         return DB::transaction(function () use ($me, $friendship) {
-            $f = Friendship::lockForUpdate()->findOrFail($friendship);
+            $f = Friendship::with('requester:id,name')->lockForUpdate()->findOrFail($friendship);
 
             if ((int) $f->addressee_id !== (int) $me->id) {
                 return response()->json(['message' => 'Only the recipient can accept this request'], 403);
@@ -70,6 +71,9 @@ class FriendshipController extends Controller
             Broadcasting::fire(new FriendRequestAccepted($f->requester_id, [
                 'friend' => ['id' => $me->id, 'name' => $me->name, 'avatar_url' => $me->avatar_url],
             ]));
+
+            LogFriendActivity::log($me->id, 'friend_added', ['friend_id' => $f->requester_id, 'friend_name' => $f->requester->name]);
+            LogFriendActivity::log($f->requester_id, 'friend_added', ['friend_id' => $me->id, 'friend_name' => $me->name]);
 
             return response()->json(['friendship' => $f]);
         });

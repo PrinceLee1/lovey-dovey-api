@@ -2,6 +2,7 @@
 // app/Http/Controllers/DailyChallengeController.php
 namespace App\Http\Controllers;
 
+use App\Actions\LogFriendActivity;
 use App\Models\DailyChallenge;
 use App\Models\GameHistory;
 use App\Models\Partner;
@@ -126,6 +127,9 @@ class DailyChallengeController extends Controller
         $u->increment('xp', $xp);
         $u->refresh();
         StreakService::bumpUser($u);
+
+        LogFriendActivity::log($u->id, 'game_completed', ['game_name' => 'Daily Challenge', 'xp_earned' => $xp]);
+        LogFriendActivity::log($u->id, 'xp_gained', ['amount' => $xp, 'total_xp' => $u->xp]);
 
         if ($row->kind === 'duo' && $row->partner_user_id) {
             if ($other = User::find($row->partner_user_id)) {

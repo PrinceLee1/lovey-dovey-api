@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Actions\LogFriendActivity;
 use App\Events\LobbyGameEnded;
 use App\Events\LobbyGameStarted;
 use App\Events\LobbyGameUpdate;
@@ -127,14 +128,19 @@ class LobbyRealTimeController extends Controller
 
       $memberIds = $lobby->members()->pluck('users.id')->push($lobby->host_id)->unique();
 
+      $gameName = ucwords(str_replace('_', ' ', $session->kind));
+
       foreach (User::whereIn('id', $memberIds)->get() as $member) {
           $member->increment('xp', $xp);
           StreakService::bumpUser($member);
 
+          LogFriendActivity::log($member->id, 'game_completed', ['game_name' => $gameName, 'xp_earned' => $xp]);
+          LogFriendActivity::log($member->id, 'xp_gained', ['amount' => $xp, 'total_xp' => $member->xp]);
+
           GameHistory::create([
               'user_id' => $member->id,
               'game_id' => (string) $session->id,
-              'game_title' => ucwords(str_replace('_', ' ', $session->kind)),
+              'game_title' => $gameName,
               'kind' => $session->kind,
               'category' => 'Group',
               'players' => $memberIds->count(),

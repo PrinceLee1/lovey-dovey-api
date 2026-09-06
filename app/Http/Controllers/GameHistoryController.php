@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\LogFriendActivity;
 use App\Models\GameHistory;
 use App\Models\Partner;
 use App\Models\User;
@@ -97,6 +98,11 @@ class GameHistoryController extends Controller
             $user->increment('xp', $xpEarned);
             $user->refresh();
             StreakService::bumpUser($user);
+
+            LogFriendActivity::log($user->id, 'game_completed', ['game_name' => $v['game_title'], 'xp_earned' => $xpEarned]);
+            if ($xpEarned > 0) {
+                LogFriendActivity::log($user->id, 'xp_gained', ['amount' => $xpEarned, 'total_xp' => $user->xp]);
+            }
 
             // 3) Partner streaks and optional mirror
             $partnerIdForMirror = $item->partner_user_id; // authoritative partner id from the saved row
