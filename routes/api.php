@@ -18,6 +18,7 @@ use App\Http\Controllers\LobbyController;
 use App\Http\Controllers\LobbyRealTimeController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PresenceController;
+use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\StreakController;
 use App\Http\Controllers\SubscriptionController;
@@ -119,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
     })->middleware('auth:sanctum');
     Route::get('/games', [GameController::class, 'index']);
     Route::get('/games/{game}', [GameController::class, 'show']);
+    Route::get('/users/{id}/profile', [UserProfileController::class, 'show']);
     Route::post('/subscribe/checkout', [SubscriptionController::class, 'checkout']);
     Route::get('lobbies/{code}/members', [LobbyController::class, 'members']);
     Route::post('/lobbies/{code}/reactions', [LobbyController::class, 'sendReaction']);
