@@ -7,6 +7,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CoupleSessionController;
 use App\Http\Controllers\DailyChallengeController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\FriendshipController;
 use App\Http\Controllers\GameAiController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameHistoryController;
@@ -76,6 +77,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/partner/unpair/confirm',[PartnerController::class,'unpairConfirm']);
     Route::get('/partner/status',         [PartnerController::class,'status']);
     Route::post('/partner/unpair/cancel', [PartnerController::class,'unpairCancel']);
+
+    Route::get('/friends',                  [FriendshipController::class, 'index']);
+    Route::get('/friends/requests',         [FriendshipController::class, 'requests']);
+    Route::post('/friends/request/{user}',  [FriendshipController::class, 'sendRequest']);
+    Route::post('/friends/accept/{friendship}', [FriendshipController::class, 'accept']);
+    Route::post('/friends/reject/{friendship}', [FriendshipController::class, 'reject']);
+    Route::post('/friends/block/{user}',    [FriendshipController::class, 'block']);
+    Route::delete('/friends/{friendship}',  [FriendshipController::class, 'destroy']);
 
     Route::get('/daily-challenge', [DailyChallengeController::class, 'show']);
     Route::post('/daily-challenge/complete', [DailyChallengeController::class, 'complete']);

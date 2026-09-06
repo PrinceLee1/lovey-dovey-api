@@ -17,4 +17,9 @@ class Friendship extends Model
     {
         return $this->belongsTo(User::class, 'addressee_id');
     }
+
+    public function scopeForUser($query, $userId)
+    {
+        return $query->where(fn ($q) => $q->where('requester_id', $userId)->orWhere('addressee_id', $userId));
+    }
 }
