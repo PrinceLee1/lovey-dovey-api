@@ -58,6 +58,11 @@ Broadcast::channel('presence.{id}', function ($user, int $id) {
     return true;
 });
 
+// ── Private: per-user game invites (see GameInviteReceived) ──────────────
+Broadcast::channel('invites.{id}', function ($user, int $id) {
+    return (int) $user->id === $id;
+});
+
 // ── Private: couple session ───────────────────────────────────────────────
 Broadcast::channel('couple-session.{code}', function ($user, string $code) {
     $session = \App\Models\GameSession::where('code', $code)->first();

@@ -8,6 +8,7 @@ use App\Http\Controllers\CoupleSessionController;
 use App\Http\Controllers\DailyChallengeController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\FriendshipController;
+use App\Http\Controllers\GameInviteController;
 use App\Http\Controllers\GameAiController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameHistoryController;
@@ -89,6 +90,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/presence/update',  [PresenceController::class, 'update']);
     Route::get('/presence/friends',  [PresenceController::class, 'friends']);
+
+    Route::post('/invites/send',            [GameInviteController::class, 'send']);
+    Route::post('/invites/accept/{invite}', [GameInviteController::class, 'accept']);
+    Route::post('/invites/decline/{invite}',[GameInviteController::class, 'decline']);
+    Route::get('/invites/pending',          [GameInviteController::class, 'pending']);
 
     Route::get('/daily-challenge', [DailyChallengeController::class, 'show']);
     Route::post('/daily-challenge/complete', [DailyChallengeController::class, 'complete']);

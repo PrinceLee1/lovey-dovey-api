@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ExpireGameInvites;
 use App\Jobs\UpdateUserPresence;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -14,5 +15,9 @@ Schedule::command('app:send-weekly-summary-digest')
     ->withoutOverlapping();
 
 Schedule::job(new UpdateUserPresence())
+    ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::job(new ExpireGameInvites())
     ->everyMinute()
     ->withoutOverlapping();
