@@ -7,10 +7,13 @@ use App\Events\LobbyGameEnded;
 use App\Events\LobbyGameStarted;
 use App\Events\LobbyGameUpdate;
 use App\Events\LobbyMessageCreated;
+use App\Models\GameHistory;
 use App\Models\Lobby;
 use App\Models\LobbyGameSession;
 use App\Models\LobbyMessage;
+use App\Models\User;
 use App\Support\Broadcasting;
+use App\Support\StreakService;
 use Illuminate\Support\Facades\Gate;
 class LobbyRealTimeController extends Controller
 {
@@ -86,17 +89,60 @@ class LobbyRealTimeController extends Controller
   }
 
   public function endGame(Request $r, string $code, int $sessionId) {
-    $data = $r->validate(['result'=>'required|array']);
+    // nullable, not required — the "End Game" early-quit button sends {}
+    // (an empty result), which json_decode turns into an empty PHP array;
+    // `required|array` rejects that (Laravel treats an empty array as
+    // "absent"), so quitting early always 422'd before this.
+    $data = $r->validate(['result'=>'nullable|array']);
+    $result = $data['result'] ?? [];
     $lobby = Lobby::where('code',$code)->firstOrFail();
     //only host (or server) can end game to prevent cheating, return 'You are not the host' instead of 'Session not found' to avoid confusion for cheaters
     abort_unless($lobby->host_id == $r->user()->id, 403);
 
     $session = LobbyGameSession::where('id',$sessionId)->where('lobby_id',$lobby->id)->firstOrFail();
-    $session->update(['status'=>'ended','result'=>$data['result'],'ended_at'=>now()]);
+    $session->update(['status'=>'ended','result'=>$result,'ended_at'=>now()]);
+
+    $this->awardXpToMembers($lobby, $session, $result);
 
     Broadcasting::fire(new LobbyGameEnded($session, $code), toOthers: true);
 
     return response()->json(['ok'=>true]);
+  }
+
+  /**
+   * Lobby games only ever report their result through the host's client
+   * (only the host can call this endpoint — see the abort_unless above), so
+   * this is the one place group XP can be credited at all. Every current
+   * member gets the same xpEarned figure the host reported, since it's a
+   * shared/group result rather than something naturally split per player.
+   * Without this, XP earned in lobby games was computed client-side and
+   * simply discarded — it never reached users.xp.
+   */
+  private function awardXpToMembers(Lobby $lobby, LobbyGameSession $session, array $result): void
+  {
+      $xp = max(0, min(5000, (int) ($result['xpEarned'] ?? 0)));
+      if ($xp <= 0) {
+          return;
+      }
+
+      $memberIds = $lobby->members()->pluck('users.id')->push($lobby->host_id)->unique();
+
+      foreach (User::whereIn('id', $memberIds)->get() as $member) {
+          $member->increment('xp', $xp);
+          StreakService::bumpUser($member);
+
+          GameHistory::create([
+              'user_id' => $member->id,
+              'game_id' => (string) $session->id,
+              'game_title' => ucwords(str_replace('_', ' ', $session->kind)),
+              'kind' => $session->kind,
+              'category' => 'Group',
+              'players' => $memberIds->count(),
+              'xp_earned' => $xp,
+              'meta' => $result,
+              'played_at' => now(),
+          ]);
+      }
   }
 
   public function sessions(Request $r, string $code) {
