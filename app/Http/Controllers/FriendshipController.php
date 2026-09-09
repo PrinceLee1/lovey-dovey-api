@@ -175,4 +175,39 @@ class FriendshipController extends Controller
 
         return response()->json(['requests' => $requests]);
     }
+
+    // GET /users/search?q=...
+    // Finds people to add regardless of whether they're currently online —
+    // unlike the "online others" list on /presence/friends, which only
+    // surfaces people who happen to be online right now.
+    public function search(Request $r)
+    {
+        $me = $r->user();
+        $q = trim((string) $r->query('q', ''));
+
+        if ($q === '') {
+            return response()->json(['users' => []]);
+        }
+
+        $allFriendships = Friendship::forUser($me->id)->get();
+        // Anyone already connected in some way (accepted, pending either
+        // direction, or blocked) shouldn't show up as a search result —
+        // they belong in the Friends or Requests tab instead.
+        $excludedIds = $allFriendships
+            ->map(fn ($f) => (int) $f->requester_id === (int) $me->id ? $f->addressee_id : $f->requester_id)
+            ->toBase()
+            ->push($me->id)
+            ->unique()
+            ->values();
+
+        $users = User::select('users.id', 'users.name', 'users.avatar_url')
+            ->selectRaw('user_presence.status as presence_status')
+            ->leftJoin('user_presence', 'user_presence.user_id', '=', 'users.id')
+            ->where(fn ($query) => $query->where('users.name', 'like', "%{$q}%")->orWhere('users.email', 'like', "%{$q}%"))
+            ->whereNotIn('users.id', $excludedIds)
+            ->limit(20)
+            ->get();
+
+        return response()->json(['users' => $users]);
+    }
 }

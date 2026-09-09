@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/partner/status',         [PartnerController::class,'status']);
     Route::post('/partner/unpair/cancel', [PartnerController::class,'unpairCancel']);
 
+    Route::get('/users/search',             [FriendshipController::class, 'search']);
     Route::get('/friends',                  [FriendshipController::class, 'index']);
     Route::get('/friends/requests',         [FriendshipController::class, 'requests']);
     Route::post('/friends/request/{user}',  [FriendshipController::class, 'sendRequest']);

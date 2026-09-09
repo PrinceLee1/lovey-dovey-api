@@ -109,7 +109,15 @@ class GameHistoryController extends Controller
 
             if ($partnerIdForMirror) {
                 if ($p = User::find($partnerIdForMirror)) {
+                    // The partner gets a mirrored GameHistory row showing this
+                    // xp_earned (below), so their running total needs the same
+                    // increment — otherwise it shows up in their history but
+                    // never lands in their actual XP total.
+                    $p->increment('xp', $xpEarned);
                     StreakService::bumpUser($p);
+                    if ($xpEarned > 0) {
+                        LogFriendActivity::log($p->id, 'xp_gained', ['amount' => $xpEarned, 'total_xp' => $p->fresh()->xp]);
+                    }
                 }
 
                 $pair = Partner::where('status','active')
