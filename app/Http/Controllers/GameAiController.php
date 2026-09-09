@@ -48,6 +48,7 @@ class GameAiController extends Controller
         $data = $request->validate([
             'category'      => 'nullable|string',      // Romantic | Playful | Spicy | Challenge
             'tone'          => 'nullable|string',      // PG-13 by default
+            'mode'          => 'nullable|in:couple,group', // who's playing — changes prompt framing below
             'count_truths'  => 'nullable|integer|min:0|max:40',
             'count_dares'   => 'nullable|integer|min:0|max:40',
             'names'         => 'nullable|array',       // ["Alex","Maya"]
@@ -56,6 +57,7 @@ class GameAiController extends Controller
 
         $category     = $data['category']     ?? 'Romantic';
         $tone         = $data['tone']         ?? 'PG-13';
+        $mode         = $data['mode']         ?? 'couple';
         $countTruths  = array_key_exists('count_truths', $data) ? (int)$data['count_truths'] : 12;
         $countDares   = $data['count_dares']  ?? 12;
         $names        = $data['names']        ?? null;
@@ -64,7 +66,8 @@ class GameAiController extends Controller
         // ----- Cache key (toggle personalization to improve hit rate) -----
         $keyParts = [
             'td',
-            'v1',                 // bump if you change prompts/instructions
+            'v2',                 // bump if you change prompts/instructions
+            $mode,
             $category,
             $tone,
             "t{$countTruths}",
@@ -113,11 +116,18 @@ class GameAiController extends Controller
             ],
         ];
 
-        $system = "You generate short, engaging Truth-or-Dare prompts for adult couples.
+        if ($mode === 'group') {
+            $system = "You generate short, engaging Truth-or-Dare prompts for a group of friends playing together (3-10 players, not a couple).
+Keep everything {$tone};.
+Prompts must work for ANY pairing or subset of the group, never assume two players are romantically involved with each other, and must be concise, fun, and immediately doable in front of the whole group. Avoid personal data collection.";
+            $who = $names ? implode(', ', $names) : 'a group of friends';
+        } else {
+            $system = "You generate short, engaging Truth-or-Dare prompts for adult couples.
 Keep everything {$tone};.
 Prompts must be concise, warm, playful, and immediately doable. Avoid personal data collection.";
+            $who = $names ? implode(' & ', $names) : 'two partners';
+        }
 
-        $who = $names ? implode(' & ', $names) : 'two partners';
         $user = trim("
 Category: {$category}
 Players: {$who}
