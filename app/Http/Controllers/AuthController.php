@@ -162,7 +162,9 @@ class AuthController extends Controller
     }
     public function uploadAvatar(Request $r) {
         $v = $r->validate([
-            'avatar' => 'required|image|max:2048', // max 2MB
+            // The frontend downscales to a JPEG before uploading; this cap
+            // is just a safety net, not the primary size control.
+            'avatar' => 'required|image|max:8192', // max 8MB
         ]);
         $path = $v['avatar']->store('avatars','public');
         $user = $r->user();
